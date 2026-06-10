@@ -4,6 +4,7 @@ export interface PageSettings {
   width: number;   // mm
   height: number;  // mm
   margins: { top: number; bottom: number; left: number; right: number };
+  linePitch: number; // mm — document grid line pitch (default 0 = use font metrics)
 }
 
 export interface TabStop {
@@ -20,6 +21,7 @@ export interface ParagraphFormat {
 export interface Run {
   text: string;
   fontSize: number; // pt
+  charSpacing: number; // mm (negative = condensed, positive = expanded)
 }
 
 export interface Paragraph {
@@ -56,7 +58,8 @@ function child(el: Element, localName: string): Element | null {
 function parsePageSettings(sectPr: Element | null): PageSettings {
   const defaults: PageSettings = {
     width: 210, height: 297, // A4
-    margins: { top: 25.4, bottom: 25.4, left: 31.7, right: 31.7 }
+    margins: { top: 25.4, bottom: 25.4, left: 31.7, right: 31.7 },
+    linePitch: 0
   };
   if (!sectPr) return defaults;
 
@@ -82,6 +85,12 @@ function parsePageSettings(sectPr: Element | null): PageSettings {
     if (b) defaults.margins.bottom = twipsToMm(parseInt(b));
     if (l) defaults.margins.left = twipsToMm(parseInt(l));
     if (r) defaults.margins.right = twipsToMm(parseInt(r));
+  }
+
+  const docGrid = child(sectPr, 'docGrid');
+  if (docGrid) {
+    const lp = getAttr(docGrid, 'linePitch');
+    if (lp) defaults.linePitch = twipsToMm(parseInt(lp));
   }
 
   return defaults;
@@ -157,6 +166,16 @@ function getRunFontSize(rPr: Element | null, defaultSize: number): number {
   return defaultSize;
 }
 
+function getRunCharSpacing(rPr: Element | null): number {
+  if (!rPr) return 0;
+  const spacing = child(rPr, 'spacing');
+  if (spacing) {
+    const val = getAttr(spacing, 'val');
+    if (val) return twipsToMm(parseInt(val));
+  }
+  return 0;
+}
+
 export async function parseDocx(data: ArrayBuffer): Promise<Document> {
   const zip = await JSZip.loadAsync(data);
   const docXml = await zip.file('word/document.xml')?.async('string');
@@ -208,6 +227,7 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
       if (node.localName === 'r') {
         const rPr = child(node, 'rPr');
         const fontSize = getRunFontSize(rPr, pFontSize);
+        const charSpacing = getRunCharSpacing(rPr);
         // Collect text and tabs within this run
         const rChildren = node.childNodes;
         for (let k = 0; k < rChildren.length; k++) {
@@ -215,11 +235,11 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
           if (!rChild.localName) continue;
           if (rChild.localName === 't') {
             const text = rChild.textContent || '';
-            if (text) runs.push({ text, fontSize });
+            if (text) runs.push({ text, fontSize, charSpacing });
           } else if (rChild.localName === 'tab') {
-            runs.push({ text: '\t', fontSize });
+            runs.push({ text: '\t', fontSize, charSpacing });
           } else if (rChild.localName === 'br') {
-            runs.push({ text: '\n', fontSize });
+            runs.push({ text: '\n', fontSize, charSpacing });
           }
         }
       }

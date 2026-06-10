@@ -80,3 +80,54 @@
 - `docx-parser.ts`: added `w:orient="landscape"` attribute handling
 - When orient=landscape and height > width, swap dimensions
 - Fixes A4/A3 landscape page sizes in generated output
+
+## Task 11: Font Replacement — SlimamifLight ✅
+- Replaced Hershey font with SlimamifLight.otf (рукописний стиль)
+- Centerline extraction via skeletonization (scikit-image)
+- Greedy skeleton tracing through junctions (мінімум pen lifts)
+- 156 glyphs: full Ukrainian + Russian + Latin + digits + punctuation
+- Font metrics match OTF exactly: unitsPerEm=1000, capHeight=700
+- Advance widths match OTF hmtx table (0.07% deviation from rounding)
+- Dot handling for і, ї, й, i, j, ё, Ї, Ё (separate connected components)
+- Post-processing: segment merging (974 → 284 segments total)
+- Manual fixes: 'а' = scaled-down 'А' (2 segs), 'з' merged to 1 seg
+- Script: `scripts/font-extract/` (Python, requires fonttools + scikit-image)
+- Old files (no longer used): `src/fonts/hershey-raw.json`, `src/core/font-simplify.ts`
+
+## Task 12: Layout Precision Fixes ✅
+- **Baseline alignment**: mixed font sizes on same line now align by baseline
+  - `FONT_BASELINE = 1140` (Y coordinate of baseline in font units)
+  - Each glyph.y = baselineY - FONT_BASELINE * glyph.scale
+- **Font scale formula**: changed from `/ FONT_CAP_HEIGHT` to `/ FONT_UNITS_PER_EM`
+  - Matches Word glyph sizes exactly (verified: 74 'н' chars per A4 line)
+- **Line height**: changed from `fontSize * 0.3528 * 1.2` to `fontSize * 0.3528 * 1.403`
+  - 1.403 = (winAscent + winDescent) / unitsPerEm = (1139 + 264) / 1000
+  - Matches Word single-spacing (verified: 5.93mm vs Word 5.94mm)
+- **Empty paragraphs**: now advance Y by one lineHeight (was ignored)
+- **Test docx generation**: uses font "Slimamif Light" 12pt as default
+
+## Task 13: Test Infrastructure Improvements ✅
+- Non-blank image assertion: tests fail if rendered image is all-white
+- `gcode-to-png.ts` helper: supports both old (G0/G1) and new (G00/G01) formats
+- New test cases: top-and-bottom, mixed-font-size, zapovit (Shevchenko poem)
+- 22 visual regression tests total
+
+## Task 14: Line Spacing Verification Tests ✅
+- Module: `tests/line-spacing.test.ts` (7 tests)
+- Verified: A4 page, single-char lines, different line spacings
+- Single spacing: 38 lines/page, 1.5: 25 lines/page, double: 19 lines/page
+- Ratio single/double = 2.0 (exact)
+- All 80 input lines → 80 layout glyphs → 80 gcode glyphs (no loss)
+- Line count in layout matches gcode output exactly
+
+## Task 15: Character Spacing (Condensed/Expanded) ✅
+- Module: `src/core/docx-parser.ts` — parse `w:spacing` from `rPr` (run properties)
+- Added `charSpacing: number` (mm) to `Run` interface
+- Negative = condensed (ущільнений), positive = expanded (розріджений)
+- Module: `src/core/layout.ts` — apply charSpacing to glyph advance width
+- Tests: `tests/char-spacing.test.ts` (5 tests)
+  - Condensed text narrower than normal
+  - Expanded text wider than normal
+  - Condensed fits more chars per line (fewer line breaks)
+  - Expanded wraps earlier (more line breaks)
+  - All glyphs preserved regardless of spacing value

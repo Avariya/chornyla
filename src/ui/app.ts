@@ -71,6 +71,10 @@ app.innerHTML = `
       </select>
       <label>Seed (для повторюваності)</label>
       <input type="number" id="seed" value="42" min="0" max="9999">
+      <label>Стартовий код (після G21)</label>
+      <textarea id="startCode" rows="2" style="width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.9rem;font-family:monospace">G92 X30</textarea>
+      <label>Кінцевий код (перед M05)</label>
+      <textarea id="endCode" rows="2" style="width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:4px;font-size:0.9rem;font-family:monospace">G00 X30 Y0.000</textarea>
       <button class="btn" id="downloadBtn" disabled>📥 Завантажити G-code</button>
     </div>
   </div>
@@ -93,6 +97,8 @@ const seedInput = document.getElementById('seed') as HTMLInputElement;
 const penUpInput = document.getElementById('penUp') as HTMLInputElement;
 const penDownInput = document.getElementById('penDown') as HTMLInputElement;
 const fontStyleSelect = document.getElementById('fontStyle') as HTMLSelectElement;
+const startCodeInput = document.getElementById('startCode') as HTMLTextAreaElement;
+const endCodeInput = document.getElementById('endCode') as HTMLTextAreaElement;
 
 // Load saved settings
 const saved = localStorage.getItem('plotter-settings');
@@ -107,6 +113,8 @@ if (saved) {
     if (s.penUp) penUpInput.value = s.penUp;
     if (s.penDown) penDownInput.value = s.penDown;
     if (s.fontStyle) fontStyleSelect.value = s.fontStyle;
+    if (s.startCode !== undefined) startCodeInput.value = s.startCode;
+    if (s.endCode !== undefined) endCodeInput.value = s.endCode;
     intensityVal.textContent = intensityInput.value + '%';
   } catch {}
 }
@@ -120,7 +128,9 @@ function saveSettings() {
     seed: seedInput.value,
     penUp: penUpInput.value,
     penDown: penDownInput.value,
-    fontStyle: fontStyleSelect.value
+    fontStyle: fontStyleSelect.value,
+    startCode: startCodeInput.value,
+    endCode: endCodeInput.value
   }));
 }
 
@@ -161,7 +171,9 @@ function updateConfig() {
     penUp: preset === 'custom' ? penUpInput.value : base.penUp,
     penDown: preset === 'custom' ? penDownInput.value : base.penDown,
     feedRate: parseInt(feedRateInput.value) || 3000,
-    travelRate: parseInt(travelRateInput.value) || 5000
+    travelRate: parseInt(travelRateInput.value) || 5000,
+    startCode: startCodeInput.value,
+    endCode: endCodeInput.value
   };
   // Update pen command fields when preset changes
   if (preset !== 'custom') {

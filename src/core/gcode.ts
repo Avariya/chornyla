@@ -6,12 +6,14 @@ export interface GcodeConfig {
   feedRate: number;    // mm/min for drawing (G1)
   travelRate: number;  // mm/min for rapid moves (G0)
   pageHeight: number;  // for Y-axis inversion (mm)
+  startCode: string;   // inserted after G21 header line
+  endCode: string;     // inserted before M05/M30
 }
 
 export const PRESETS = {
-  zAxis: { penUp: 'G00 Z0.300', penDown: 'G01 Z-0.200 F5000', feedRate: 5000, travelRate: 5000, pageHeight: 297 },
-  servo: { penUp: 'M3 S0', penDown: 'M3 S50', feedRate: 5000, travelRate: 5000, pageHeight: 297 },
-  custom: { penUp: 'G00 Z0.300', penDown: 'G01 Z-0.200 F5000', feedRate: 5000, travelRate: 5000, pageHeight: 297 },
+  zAxis: { penUp: 'G00 Z0.300', penDown: 'G01 Z-0.200 F5000', feedRate: 5000, travelRate: 5000, pageHeight: 297, startCode: 'G92 X30', endCode: '' },
+  servo: { penUp: 'M3 S0', penDown: 'M3 S50', feedRate: 5000, travelRate: 5000, pageHeight: 297, startCode: 'G92 X30', endCode: '' },
+  custom: { penUp: 'G00 Z0.300', penDown: 'G01 Z-0.200 F5000', feedRate: 5000, travelRate: 5000, pageHeight: 297, startCode: 'G92 X30', endCode: '' },
 } as const;
 
 // Parse SVG path 'd' attribute into commands
@@ -194,6 +196,9 @@ export function generateGcode(pages: Page[], config: GcodeConfig): string {
 
   // Header
   lines.push('G21 G90 G40 G17');
+  if (config.startCode) {
+    for (const l of config.startCode.split('\n')) if (l.trim()) lines.push(l.trim());
+  }
   lines.push('M03 S10000');
   lines.push('G04 P2');
   lines.push(penUp);
@@ -229,7 +234,11 @@ export function generateGcode(pages: Page[], config: GcodeConfig): string {
 
   // Footer
   lines.push(penUp);
-  lines.push('G00 X0.000 Y0.000');
+  if (config.endCode) {
+    for (const l of config.endCode.split('\n')) if (l.trim()) lines.push(l.trim());
+  } else {
+    lines.push('G00 X0.000 Y0.000');
+  }
   lines.push('M05');
   lines.push('M30');
 

@@ -6,60 +6,81 @@ Regular fonts (TrueType/OpenType) are **outlines** — closed shapes. When a plo
 it traces the contour, so "O" becomes two circles (outer + inner). We need **single-stroke** fonts
 where each letter is a single open path, like handwriting with a pen.
 
-## Available Solutions
+## Current Solution: SlimamifLight (centerline extraction)
 
-### Hershey Fonts (Primary Choice)
-- **Origin**: Created by Dr. Allen Hershey at Naval Weapons Laboratory, ~1967
-- **License**: Public domain
-- **Coverage**: Latin, Greek, **Cyrillic**, Japanese, symbols
-- **Styles**: Simplex (thin), Duplex, Complex, Triplex; Script (cursive)
-- **Format**: Coordinate pairs connected by straight lines
-- **Key repos**:
-  - https://github.com/kamalmostafa/hershey-fonts — C library + original data
-  - https://github.com/reinholtz/hershey-fonts-with-unicode — Unicode mapping
-  - https://github.com/techninja/hersheytextjs — npm package, JSON format
-  - https://gitlab.com/oskay/svg-fonts — SVG font format (Evil Mad Scientist)
+### Source Font
+- **File**: `SlimamifLight.otf` (must be installed on system for Word preview)
+- **Style**: Handwritten/calligraphic
+- **Coverage**: Full Ukrainian + Russian + Latin + digits + punctuation (155 chars)
+- **License**: [check with font author]
 
-### Cyrillic-Specific
-- https://github.com/zxfr/strokefont_cyrillic — Tools for converting fonts to single-stroke with Cyrillic support
-- Hershey "cyrillic" font set — exists in original data, uses KOI7 encoding
-- Need to map KOI7/cp1251 → Unicode for modern use
+### Extraction Process
+1. Render each glyph at 200px using PIL (preserving baseline-relative positioning)
+2. Binary threshold (< 128)
+3. For dot-characters (і, ї, й, i, j, ё, Ї, Ё): separate small connected components as dots
+4. Skeletonize body using `skimage.morphology.skeletonize`
+5. Trace skeleton with greedy algorithm that follows straightest path through junctions
+6. Merge nearby segments (threshold 15px)
+7. Douglas-Peucker simplification (tolerance 1.2px)
+8. Convert pixel coords to font units (px_to_units = unitsPerEm / renderSize)
+9. Add dot paths as diamond shapes (radius 15 font units)
 
-### Commercial Options (not used)
-- Quantum Enterprises (quantumenterprises.co.uk) — £99-200 per font, no Cyrillic
-- Custom font creation services — expensive, long turnaround
+### Script Location
+- `scripts/font-extract/` — Python extraction scripts
+- Dependencies: `fonttools`, `scikit-image`, `PIL`, `numpy`
+- Run: `python3 scripts/font-extract/extract_centerline.py`
 
-## Chosen Approach
+### Manual Fixes Applied
+- `а` — replaced with scaled-down `А` (original had too many fragments)
+- `з` — merged 3 segments into 1 continuous stroke
 
-1. Use `hersheytext` npm package as base — provides JSON font data + SVG font loading
-2. The original Hershey font collection includes Cyrillic characters
-3. Use `reinholtz/hershey-fonts-with-unicode` for proper Unicode mapping
-4. Font styles to consider:
-   - `hershey_script_1` — cursive/script style (most "handwritten" look)
-   - `futural` (Hershey Sans Simplex) — clean single-stroke print
-   - Cyrillic variants from the original Hershey data
+### Font Metrics (SlimamifLight)
+| Metric | Value | Notes |
+|--------|-------|-------|
+| unitsPerEm | 1000 | Standard |
+| sCapHeight | 700 | OS/2 table, verified |
+| sxHeight | 500 | OS/2 table |
+| sTypoAscender | 800 | |
+| sTypoDescender | -200 | |
+| usWinAscent | 1139 | Used for line height |
+| usWinDescent | 264 | Used for line height |
+| FONT_BASELINE | 1140 | Y coord of baseline in our extracted data |
+
+### Line Height Formula
+Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
+= `1403 / 1000 * fontSize * 0.3528` = `fontSize * 0.3528 * 1.403`
+
+### Font Scale Formula  
+`scale = fontSize_pt * 0.3528 / unitsPerEm`
+= `fontSize * 0.3528 / 1000`
 
 ## Font Data Format (in our app)
 
 ```json
 {
-  "name": "hershey-cyrillic",
-  "unitsPerEm": 32,
+  "name": "slimamif-light",
+  "unitsPerEm": 1000,
   "glyphs": {
-    "А": { "path": "M0,0 L8,21 L16,0 M3,7 L13,7", "width": 16 },
-    "Б": { "path": "M2,0 L2,21 L12,21 ...", "width": 14 },
+    "А": { "path": "M440,1140 L...", "width": 495.0 },
+    "а": { "path": "M...", "width": 353.6 },
     ...
   }
 }
 ```
 
-Each glyph has:
-- `path`: SVG path `d` attribute (M, L, C commands)
-- `width`: advance width (horizontal space the character occupies)
+- `path`: SVG path with M (moveTo) and L (lineTo) commands
+- `width`: advance width in font units (matches OTF hmtx table)
+- Coordinates: Y=0 is top, Y grows downward, baseline at ~1140
 
-## Fallback Strategy
+## Previous Approach (deprecated)
 
-If a character is not found in font data:
-1. Show warning to user
-2. Skip the character (leave blank space of average width)
-3. Never crash the pipeline
+### Hershey Fonts
+- Used initially, replaced due to "too printed" look
+- Files: `src/fonts/hershey-raw.json`, `src/core/font-simplify.ts` (no longer imported)
+- Issues: not handwritten enough, complex mapping for Cyrillic
+
+## Segment Count Goals
+- Ideal: 1-2 segments per glyph (one continuous stroke)
+- Acceptable: 3-4 (crossbars, dots)
+- Current: 284 total segments for 156 glyphs (avg 1.8)
+- Only `#` has > 4 segments (5)

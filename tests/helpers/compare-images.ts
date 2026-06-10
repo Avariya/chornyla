@@ -5,7 +5,7 @@ export interface CompareResult {
   diffPercent: number;
 }
 
-export async function compareImages(actual: Buffer, expected: Buffer, threshold = 0.5): Promise<CompareResult> {
+export async function compareImages(actual: Buffer, expected: Buffer, threshold = 0.1): Promise<CompareResult> {
   const a = await sharp(actual).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
   const b = await sharp(expected).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
 

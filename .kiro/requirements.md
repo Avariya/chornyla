@@ -12,6 +12,7 @@
   - Alignment: left, center, right, justify
   - Line spacing: single, 1.5, double, exact value
   - Font size (для масштабування символів)
+  - Character spacing: condensed (ущільнений) / expanded (розріджений)
   - Текст (Unicode, кирилиця + латиниця)
 
 ### Шрифт

@@ -5,16 +5,18 @@
 ```
 src/
 ├── core/
-│   ├── font.ts          — Font data loading & glyph lookup
-│   ├── docx-parser.ts   — DOCX → Document Model
-│   ├── layout.ts        — Document Model → Positioned Glyphs
+│   ├── font.ts          — Font data loading & glyph lookup (SlimamifLight)
+│   ├── docx-parser.ts   — DOCX → Document Model (with orientation support)
+│   ├── layout.ts        — Document Model → Positioned Glyphs (baseline-aligned)
 │   ├── effects.ts       — Apply handwriting randomness
-│   ├── gcode.ts         — SVG paths → G-code
+│   ├── gcode.ts         — SVG paths → G-code (GRBL format)
 │   └── pipeline.ts      — Orchestrator: connects all modules
 ├── ui/
 │   └── app.ts           — Web interface
-└── fonts/
-    └── hershey-cyrillic.json — Font glyph data
+├── fonts/
+│   └── slimamif.json    — Centerline-extracted font data (156 glyphs)
+scripts/
+└── font-extract/        — Python scripts for font extraction (dev-only)
 ```
 
 ## Data Flow
@@ -73,7 +75,7 @@ interface Paragraph {
   alignment: 'left' | 'center' | 'right' | 'justify';
   spacing: { before: number; after: number; line: number };
 }
-interface Run { text: string; fontSize: number; }
+interface Run { text: string; fontSize: number; charSpacing: number; }
 
 // Layout output
 interface PositionedGlyph {

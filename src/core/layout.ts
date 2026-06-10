@@ -1,5 +1,5 @@
 import { Document, Paragraph, ParagraphFormat } from './docx-parser';
-import { getGlyph, FONT_UNITS_PER_EM, FONT_CAP_HEIGHT } from './font';
+import { getGlyph, FONT_UNITS_PER_EM, FONT_CAP_HEIGHT, FONT_BASELINE } from './font';
 
 export interface PositionedGlyph {
   char: string;
@@ -18,8 +18,8 @@ export interface Page {
 // Convert font size (pt) to scale factor (font units → mm)
 function fontScale(fontSize: number): number {
   // fontSize in pt, 1pt = 0.3528mm
-  // We want cap height to equal ~fontSize in mm-equivalent
-  return (fontSize * 0.3528) / FONT_CAP_HEIGHT;
+  // scale maps font units to mm: 1 em (FONT_UNITS_PER_EM units) = fontSize in mm
+  return (fontSize * 0.3528) / FONT_UNITS_PER_EM;
 }
 
 // Default tab stops every 12.7mm (0.5 inch) if none specified
@@ -65,7 +65,7 @@ export function layoutDocument(doc: Document): Page[] {
     const lines = layoutParagraph(para, page.margins.left, contentLeft, contentRight);
     const fmt = para.format;
     const fontSize = para.runs[0]?.fontSize || 12;
-    const lineHeight = getLineHeight(fontSize, fmt.spacing.line);
+    const lineHeight = getLineHeight(fontSize, fmt.spacing.line, page.linePitch);
 
     // Space before paragraph
     y += fmt.spacing.before;
@@ -92,12 +92,15 @@ export function layoutDocument(doc: Document): Page[] {
         offsetX = maxWidth - line.width;
       }
 
-      // Position glyphs on this line
+      // Position glyphs on this line — align by baseline
+      // Baseline position = y + FONT_BASELINE * maxScale on this line
+      const maxScale = Math.max(...line.glyphs.map(g => g.scale));
+      const baselineY = y + FONT_BASELINE * maxScale;
       for (const g of line.glyphs) {
         currentGlyphs.push({
           ...g,
           x: g.x + offsetX,
-          y: y
+          y: baselineY - FONT_BASELINE * g.scale
         });
       }
 
@@ -132,8 +135,12 @@ export function layoutDocument(doc: Document): Page[] {
   return pages;
 }
 
-function getLineHeight(fontSize: number, lineSpacing: number): number {
-  const baseHeight = fontSize * 0.3528 * 1.2; // pt → mm with 20% leading
+function getLineHeight(fontSize: number, lineSpacing: number, linePitch: number): number {
+  // Word uses (winAscent + winDescent) / unitsPerEm * fontSize for single spacing
+  // For SlimamifLight: (1139 + 264) / 1000 = 1.403
+  const fontHeight = fontSize * 0.3528 * 1.403;
+  // docGrid linePitch sets the document grid; Word snaps to it as minimum single spacing
+  const baseHeight = linePitch > 0 ? Math.max(fontHeight, linePitch) : fontHeight;
   if (lineSpacing > 10) {
     // Absolute value in mm (from exact/atLeast rule)
     return lineSpacing;
@@ -170,6 +177,7 @@ function layoutParagraph(
 
   for (const run of para.runs) {
     const scale = fontScale(run.fontSize);
+    const cs = run.charSpacing || 0;
 
     for (const char of run.text) {
       if (char === '\n') {
@@ -191,7 +199,7 @@ function layoutParagraph(
       const glyph = getGlyph(char);
       if (!glyph) continue;
 
-      const charWidth = glyph.width * scale;
+      const charWidth = glyph.width * scale + cs;
 
       // Word wrap
       if (x + charWidth > maxWidth && lineGlyphs.length > 0) {
@@ -218,7 +226,7 @@ function layoutParagraph(
           for (const og of overflow) {
             const ogGlyph = getGlyph(og.char);
             if (!ogGlyph) continue;
-            const ogWidth = ogGlyph.width * og.scale;
+            const ogWidth = ogGlyph.width * og.scale + cs;
             lineGlyphs.push({
               char: og.char,
               x: contentLeft + fmt.indent.left + x,

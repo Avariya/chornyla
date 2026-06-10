@@ -1,13 +1,26 @@
 import { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType, convertMillimetersToTwip, LineRuleType, PageOrientation } from 'docx';
 
-async function make(children: Paragraph[], pageSize?: { width: number; height: number; orientation?: typeof PageOrientation[keyof typeof PageOrientation] }): Promise<ArrayBuffer> {
+async function make(children: Paragraph[], pageSize?: { width: number; height: number; orientation?: typeof PageOrientation[keyof typeof PageOrientation] }, margins?: { top?: number; bottom?: number; left?: number; right?: number }): Promise<ArrayBuffer> {
   const section: any = { children };
-  if (pageSize) {
-    section.properties = {
-      page: { size: { width: pageSize.width, height: pageSize.height, orientation: pageSize.orientation } }
-    };
-  }
-  const doc = new Document({ sections: [section] });
+  const page: any = {};
+  if (pageSize) page.size = { width: pageSize.width, height: pageSize.height, orientation: pageSize.orientation };
+  if (margins) page.margin = {
+    top: margins.top !== undefined ? convertMillimetersToTwip(margins.top) : undefined,
+    bottom: margins.bottom !== undefined ? convertMillimetersToTwip(margins.bottom) : undefined,
+    left: margins.left !== undefined ? convertMillimetersToTwip(margins.left) : undefined,
+    right: margins.right !== undefined ? convertMillimetersToTwip(margins.right) : undefined,
+  };
+  if (pageSize || margins) section.properties = { page };
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: { name: 'Slimamif Light' }, size: 24 },
+        },
+      },
+    },
+    sections: [section],
+  });
   const buf = await Packer.toBuffer(doc);
   return new Uint8Array(buf).buffer;
 }
@@ -19,7 +32,7 @@ export async function basicText(): Promise<ArrayBuffer> {
 export async function indentFirstLine(): Promise<ArrayBuffer> {
   return make([new Paragraph({
     indent: { firstLine: convertMillimetersToTwip(12.5) },
-    children: [new TextRun('Перший рядок з відступом. Другий рядок тексту продовжується далі.')],
+    children: [new TextRun('Перший рядок з відступом першого рядка має бути довшим щоб перенестись на другий рядок. Другий рядок тексту продовжується далі без відступу, бо відступ лише у першого рядка параграфу.')],
   })]);
 }
 
@@ -69,7 +82,7 @@ export async function fontSizeLarge(): Promise<ArrayBuffer> {
 export async function lineSpacingDouble(): Promise<ArrayBuffer> {
   return make([new Paragraph({
     spacing: { line: 480, lineRule: LineRuleType.AUTO },
-    children: [new TextRun('Перший рядок з подвійним інтервалом. Другий рядок тексту продовжується далі. Третій рядок для перевірки міжрядкового інтервалу.')],
+    children: [new TextRun('Перший рядок з подвійним інтервалом має бути довшим щоб показати перенос. Другий рядок тексту продовжується далі і також має бути достатньо довгим. Третій рядок для перевірки міжрядкового інтервалу має чітко показувати подвійну відстань між рядками тексту.')],
   })]);
 }
 
@@ -166,7 +179,7 @@ export async function pangramItalic(): Promise<ArrayBuffer> {
 
 export async function topAndBottom(): Promise<ArrayBuffer> {
   const emptyLines: Paragraph[] = [];
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 35; i++) {
     emptyLines.push(new Paragraph({ children: [new TextRun('')] }));
   }
   return make([
@@ -174,4 +187,67 @@ export async function topAndBottom(): Promise<ArrayBuffer> {
     ...emptyLines,
     new Paragraph({ children: [new TextRun('Текст знизу сторінки')] }),
   ]);
+}
+
+export async function mixedFontSize(): Promise<ArrayBuffer> {
+  return make([new Paragraph({
+    children: [
+      new TextRun({ text: 'Малий ', size: 20 }),
+      new TextRun({ text: 'Середній ', size: 28 }),
+      new TextRun({ text: 'Великий ', size: 40 }),
+      new TextRun({ text: 'Малий', size: 20 }),
+    ],
+  })]);
+}
+
+export async function zapovit(): Promise<ArrayBuffer> {
+  const lines = [
+    'Як умру, то поховайте',
+    'Мене на могилі',
+    'Серед степу широкого',
+    'На Вкраїні милій,',
+    'Щоб лани широкополі,',
+    'І Дніпро, і кручі',
+    'Було видно, було чути,',
+    'Як реве ревучий.',
+    '',
+    'Як понесе з України',
+    'У синєє море',
+    'Кров ворожу... отойді я',
+    'І лани і гори —',
+    'Все покину, і полину',
+    'До самого Бога',
+    'Молитися... а до того',
+    'Я не знаю Бога.',
+    '',
+    'Поховайте та вставайте,',
+    'Кайдани порвіте',
+    'І вражою злою кров\'ю',
+    'Волю окропіте.',
+    'І мене в сем\'ї великій,',
+    'В сем\'ї вольній, новій,',
+    'Не забудьте пом\'янути',
+    'Незлим тихим словом.',
+  ];
+  return make(lines.map(l => new Paragraph({ children: [new TextRun(l)] })));
+}
+
+export async function fullPage(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('а'.repeat(5000))] })]);
+}
+
+export async function fullPageLargeMargins(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('а'.repeat(5000))] })], undefined, { top: 50, bottom: 40, left: 45, right: 35 });
+}
+
+export async function fullPageSmallMargins(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('а'.repeat(7000))] })], undefined, { top: 8, bottom: 12, left: 10, right: 15 });
+}
+
+export async function fullPageZeroMargins(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('а'.repeat(7000))] })], undefined, { top: 0, bottom: 0, left: 0, right: 0 });
+}
+
+export async function guillemets(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('«Привіт» — „світ" і "ще"')] })]);
 }

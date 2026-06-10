@@ -73,4 +73,11 @@ describe('E2E Visual Regression', () => {
   it('pangram print', () => runTest('pangram-print', fixtures.pangramPrint));
   it('pangram italic', () => runTest('pangram-italic', fixtures.pangramItalic, { fontStyle: 'italic' as const }));
   it('top and bottom', () => runTest('top-and-bottom', fixtures.topAndBottom));
+  it('mixed font size', () => runTest('mixed-font-size', fixtures.mixedFontSize));
+  it('zapovit', () => runTest('zapovit', fixtures.zapovit));
+  it('full page', () => runTest('full-page', fixtures.fullPage));
+  it('full page large margins', () => runTest('full-page-large-margins', fixtures.fullPageLargeMargins));
+  it('full page small margins', () => runTest('full-page-small-margins', fixtures.fullPageSmallMargins));
+  it('full page zero margins', () => runTest('full-page-zero-margins', fixtures.fullPageZeroMargins));
+  it('guillemets', () => runTest('guillemets', fixtures.guillemets));
 });

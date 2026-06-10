@@ -35,13 +35,19 @@
 
 | Source | Format | Notes |
 |--------|--------|-------|
-| Hershey fonts | JSON (path data) | Public domain, includes Cyrillic |
-| hershey-fonts-with-unicode | JHF + Unicode mapping | Maps Hershey glyphs to Unicode code points |
-| svg-fonts (Evil Mad Scientist) | SVG font format | Alternative source for single-stroke fonts |
+| SlimamifLight.otf | Centerline-extracted JSON | Handwritten style, full Cyrillic |
+
+### Font Extraction Tools (dev-only, Python)
+| Tool | Purpose |
+|------|---------|
+| fonttools | Read OTF metrics (advance widths, cap height) |
+| scikit-image | Skeletonization for centerline extraction |
+| Pillow (PIL) | Glyph rendering for skeleton input |
+| numpy | Image array operations |
 
 ## Key Algorithms
 
-- **Adaptive Bezier flattening** — converts cubic/quadratic curves to line segments
+- **Centerline extraction** — skeletonize + greedy junction tracing + Douglas-Peucker simplify
 - **Seeded PRNG** — reproducible randomness for handwriting effects
 - **Word-wrap** — respects page width, margins, indents
-- **Path optimization** — minimize pen-up travel distance (nearest-neighbor sort)
+- **Baseline alignment** — mixed font sizes align by baseline, not top
