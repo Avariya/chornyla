@@ -89,4 +89,71 @@ describe('Normal-style defaults are applied as fallback', () => {
     expect(styleRes.pages.length).toBe(explicitRes.pages.length);
     expect(glyphs(styleRes)).toBe(glyphs(explicitRes));
   });
+
+  it('explicit after="0" on paragraph overrides docDefaults after (not replaced)', async () => {
+    // Scenario: docDefaults says after=160tw (~2.8mm between paragraphs),
+    // but paragraphs explicitly set after="0" to suppress that gap.
+    // The parser must respect the explicit "0" and NOT apply docDefaults.
+    const doc = new Document({
+      styles: {
+        default: {
+          document: {
+            run: { font: { name: 'Slimamif Light' }, size: 24 },
+            paragraph: { spacing: { after: 160 } }, // docDefaults: 160tw gap after each para
+          },
+        },
+      },
+      sections: [
+        {
+          children: LINES.map(
+            (t) =>
+              new Paragraph({
+                spacing: { after: 0 }, // explicitly override to 0
+                children: [new TextRun(t)],
+              })
+          ),
+        },
+      ],
+    });
+    const buf = new Uint8Array(await Packer.toBuffer(doc)).buffer;
+    const parsed = await parseDocx(buf);
+
+    for (const p of parsed.paragraphs) {
+      // Each paragraph explicitly says after=0 → must be 0, not ~2.8mm from docDefaults
+      expect(p.format.spacing.after).toBe(0);
+    }
+  });
+
+  it('paragraphs WITHOUT explicit spacing inherit docDefaults after', async () => {
+    // Flip side: paragraphs that do NOT set after should get the docDefaults value.
+    const doc = new Document({
+      styles: {
+        default: {
+          document: {
+            run: { font: { name: 'Slimamif Light' }, size: 24 },
+            paragraph: { spacing: { after: 160 } }, // docDefaults: 160tw
+          },
+        },
+      },
+      sections: [
+        {
+          children: LINES.map(
+            (t) =>
+              new Paragraph({
+                // NO explicit spacing — should inherit docDefaults
+                children: [new TextRun(t)],
+              })
+          ),
+        },
+      ],
+    });
+    const buf = new Uint8Array(await Packer.toBuffer(doc)).buffer;
+    const parsed = await parseDocx(buf);
+
+    for (const p of parsed.paragraphs) {
+      // 160 twips → mm: 160 / 56.7 ≈ 2.82mm
+      expect(p.format.spacing.after).toBeGreaterThan(2);
+      expect(p.format.spacing.after).toBeCloseTo(160 / 56.7, 1);
+    }
+  });
 });
