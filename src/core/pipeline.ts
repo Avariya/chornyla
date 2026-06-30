@@ -12,13 +12,13 @@ export interface ConvertConfig {
 
 export interface ConvertResult {
   gcode: string;
-  pages: Page[];       // for preview
+  pages: Page[]; // for preview
   warnings: string[];
 }
 
 export const DEFAULT_CONFIG: ConvertConfig = {
   gcode: { ...PRESETS.zAxis },
-  effects: { intensity: 0.5, seed: 42 }
+  effects: { intensity: 0.5, seed: 42 },
 };
 
 export async function convert(

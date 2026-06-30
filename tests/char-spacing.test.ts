@@ -9,11 +9,15 @@ async function makeWithCharSpacing(spacing: number): Promise<ArrayBuffer> {
   // spacing in twips (1pt = 20 twips). Negative = condensed, positive = expanded.
   const doc = new Document({
     styles: { default: { document: { run: { font: { name: 'Slimamif Light' }, size: 24 } } } },
-    sections: [{
-      children: [new Paragraph({
-        children: [new TextRun({ text: 'абвгдежзийклмноп', characterSpacing: spacing })],
-      })],
-    }],
+    sections: [
+      {
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text: 'абвгдежзийклмноп', characterSpacing: spacing })],
+          }),
+        ],
+      },
+    ],
   });
   const buf = await Packer.toBuffer(doc);
   return new Uint8Array(buf).buffer;
@@ -58,22 +62,32 @@ describe('Character spacing (condensed/expanded)', () => {
     const makeDoc = async (spacing: number) => {
       const doc = new Document({
         styles: { default: { document: { run: { font: { name: 'Slimamif Light' }, size: 24 } } } },
-        sections: [{
-          children: [new Paragraph({
-            children: [new TextRun({ text: longText, characterSpacing: spacing })],
-          })],
-        }],
+        sections: [
+          {
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: longText, characterSpacing: spacing })],
+              }),
+            ],
+          },
+        ],
       });
       const buf = await Packer.toBuffer(doc);
       return new Uint8Array(buf).buffer;
     };
 
     const normalResult = await convert(await makeDoc(0), JSON.parse(JSON.stringify(testConfig)));
-    const condensedResult = await convert(await makeDoc(-20), JSON.parse(JSON.stringify(testConfig)));
+    const condensedResult = await convert(
+      await makeDoc(-20),
+      JSON.parse(JSON.stringify(testConfig))
+    );
 
     // Count lines on first page (unique Y positions)
-    const normalLines = new Set(normalResult.pages[0].glyphs.map(g => Math.round(g.y * 100))).size;
-    const condensedLines = new Set(condensedResult.pages[0].glyphs.map(g => Math.round(g.y * 100))).size;
+    const normalLines = new Set(normalResult.pages[0].glyphs.map((g) => Math.round(g.y * 100)))
+      .size;
+    const condensedLines = new Set(
+      condensedResult.pages[0].glyphs.map((g) => Math.round(g.y * 100))
+    ).size;
 
     // Condensed fits more per line → fewer lines for same text
     expect(condensedLines).toBeLessThan(normalLines);
@@ -84,11 +98,15 @@ describe('Character spacing (condensed/expanded)', () => {
     const makeDoc = async (spacing: number) => {
       const doc = new Document({
         styles: { default: { document: { run: { font: { name: 'Slimamif Light' }, size: 24 } } } },
-        sections: [{
-          children: [new Paragraph({
-            children: [new TextRun({ text: longText, characterSpacing: spacing })],
-          })],
-        }],
+        sections: [
+          {
+            children: [
+              new Paragraph({
+                children: [new TextRun({ text: longText, characterSpacing: spacing })],
+              }),
+            ],
+          },
+        ],
       });
       const buf = await Packer.toBuffer(doc);
       return new Uint8Array(buf).buffer;
@@ -97,8 +115,10 @@ describe('Character spacing (condensed/expanded)', () => {
     const normalResult = await convert(await makeDoc(0), JSON.parse(JSON.stringify(testConfig)));
     const expandedResult = await convert(await makeDoc(60), JSON.parse(JSON.stringify(testConfig)));
 
-    const normalLines = new Set(normalResult.pages[0].glyphs.map(g => Math.round(g.y * 100))).size;
-    const expandedLines = new Set(expandedResult.pages[0].glyphs.map(g => Math.round(g.y * 100))).size;
+    const normalLines = new Set(normalResult.pages[0].glyphs.map((g) => Math.round(g.y * 100)))
+      .size;
+    const expandedLines = new Set(expandedResult.pages[0].glyphs.map((g) => Math.round(g.y * 100)))
+      .size;
 
     // Expanded wraps sooner → more lines
     expect(expandedLines).toBeGreaterThan(normalLines);

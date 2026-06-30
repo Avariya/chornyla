@@ -1,0 +1,7 @@
+dist/
+node_modules/
+tests/output/
+tests/snapshots/
+src/fonts/*.json
+scripts/font-extract/*.json
+package-lock.json

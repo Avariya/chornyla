@@ -9,12 +9,14 @@ where each letter is a single open path, like handwriting with a pen.
 ## Current Solution: SlimamifLight (centerline extraction)
 
 ### Source Font
+
 - **File**: `SlimamifLight.otf` (must be installed on system for Word preview)
 - **Style**: Handwritten/calligraphic
 - **Coverage**: Full Ukrainian + Russian + Latin + digits + punctuation (155 chars)
 - **License**: [check with font author]
 
 ### Extraction Process
+
 1. Render each glyph at 200px using PIL (preserving baseline-relative positioning)
 2. Binary threshold (< 128)
 3. For dot-characters (і, ї, й, i, j, ё, Ї, Ё): separate small connected components as dots
@@ -26,31 +28,36 @@ where each letter is a single open path, like handwriting with a pen.
 9. Add dot paths as diamond shapes (radius 15 font units)
 
 ### Script Location
+
 - `scripts/font-extract/` — Python extraction scripts
 - Dependencies: `fonttools`, `scikit-image`, `PIL`, `numpy`
 - Run: `python3 scripts/font-extract/extract_centerline.py`
 
 ### Manual Fixes Applied
+
 - `а` — replaced with scaled-down `А` (original had too many fragments)
 - `з` — merged 3 segments into 1 continuous stroke
 
 ### Font Metrics (SlimamifLight)
-| Metric | Value | Notes |
-|--------|-------|-------|
-| unitsPerEm | 1000 | Standard |
-| sCapHeight | 700 | OS/2 table, verified |
-| sxHeight | 500 | OS/2 table |
-| sTypoAscender | 800 | |
-| sTypoDescender | -200 | |
-| usWinAscent | 1139 | Used for line height |
-| usWinDescent | 264 | Used for line height |
-| FONT_BASELINE | 1140 | Y coord of baseline in our extracted data |
+
+| Metric         | Value | Notes                                     |
+| -------------- | ----- | ----------------------------------------- |
+| unitsPerEm     | 1000  | Standard                                  |
+| sCapHeight     | 700   | OS/2 table, verified                      |
+| sxHeight       | 500   | OS/2 table                                |
+| sTypoAscender  | 800   |                                           |
+| sTypoDescender | -200  |                                           |
+| usWinAscent    | 1139  | Used for line height                      |
+| usWinDescent   | 264   | Used for line height                      |
+| FONT_BASELINE  | 1140  | Y coord of baseline in our extracted data |
 
 ### Line Height Formula
+
 Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
 = `1403 / 1000 * fontSize * 0.3528` = `fontSize * 0.3528 * 1.403`
 
-### Font Scale Formula  
+### Font Scale Formula
+
 `scale = fontSize_pt * 0.3528 / unitsPerEm`
 = `fontSize * 0.3528 / 1000`
 
@@ -75,11 +82,13 @@ Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
 ## Previous Approach (deprecated)
 
 ### Hershey Fonts
+
 - Used initially, replaced due to "too printed" look
 - Files: `src/fonts/hershey-raw.json`, `src/core/font-simplify.ts` (no longer imported)
 - Issues: not handwritten enough, complex mapping for Cyrillic
 
 ## Segment Count Goals
+
 - Ideal: 1-2 segments per glyph (one continuous stroke)
 - Acceptable: 3-4 (crossbars, dots)
 - Current: 284 total segments for 156 glyphs (avg 1.8)

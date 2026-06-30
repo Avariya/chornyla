@@ -9,17 +9,18 @@
 
 ## Шрифти
 
-| Файл | Назва | Стиль |
-|------|-------|-------|
-| Caveat-Regular.ttf | Caveat | Швидкий рукопис, легкий |
-| Caveat-Bold.ttf | Caveat Bold | Швидкий рукопис, жирний |
-| MarckScript-Regular.ttf | Marck Script | Каліграфічний курсив |
-| BadScript-Regular.ttf | Bad Script | Недбалий рукопис |
-| Pangolin-Regular.ttf | Pangolin | Рукописні друковані |
+| Файл                    | Назва        | Стиль                   |
+| ----------------------- | ------------ | ----------------------- |
+| Caveat-Regular.ttf      | Caveat       | Швидкий рукопис, легкий |
+| Caveat-Bold.ttf         | Caveat Bold  | Швидкий рукопис, жирний |
+| MarckScript-Regular.ttf | Marck Script | Каліграфічний курсив    |
+| BadScript-Regular.ttf   | Bad Script   | Недбалий рукопис        |
+| Pangolin-Regular.ttf    | Pangolin     | Рукописні друковані     |
 
 ## Підтримка мов
 
 Всі шрифти підтримують:
+
 - Українську (А-Я, а-я, Ґ, Є, І, Ї)
 - Російську
 - Латиницю

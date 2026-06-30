@@ -1,6 +1,6 @@
 import { convert, ConvertConfig, DEFAULT_CONFIG, PRESETS, Page } from '../core/pipeline';
 
-let currentConfig: ConvertConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+const currentConfig: ConvertConfig = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
 let currentPages: Page[] = [];
 let currentGcode = '';
 
@@ -116,27 +116,35 @@ if (saved) {
     if (s.startCode !== undefined) startCodeInput.value = s.startCode;
     if (s.endCode !== undefined) endCodeInput.value = s.endCode;
     intensityVal.textContent = intensityInput.value + '%';
-  } catch {}
+  } catch {
+    // ignore malformed saved settings
+  }
 }
 
 function saveSettings() {
-  localStorage.setItem('plotter-settings', JSON.stringify({
-    preset: presetSelect.value,
-    feedRate: feedRateInput.value,
-    travelRate: travelRateInput.value,
-    intensity: intensityInput.value,
-    seed: seedInput.value,
-    penUp: penUpInput.value,
-    penDown: penDownInput.value,
-    fontStyle: fontStyleSelect.value,
-    startCode: startCodeInput.value,
-    endCode: endCodeInput.value
-  }));
+  localStorage.setItem(
+    'plotter-settings',
+    JSON.stringify({
+      preset: presetSelect.value,
+      feedRate: feedRateInput.value,
+      travelRate: travelRateInput.value,
+      intensity: intensityInput.value,
+      seed: seedInput.value,
+      penUp: penUpInput.value,
+      penDown: penDownInput.value,
+      fontStyle: fontStyleSelect.value,
+      startCode: startCodeInput.value,
+      endCode: endCodeInput.value,
+    })
+  );
 }
 
 // Drag & drop
 dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragover');
+});
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('drop', (e) => {
   e.preventDefault();
@@ -150,18 +158,41 @@ fileInput.addEventListener('change', () => {
 });
 
 // Settings
-presetSelect.addEventListener('change', () => { updateConfig(); reconvert(); });
-feedRateInput.addEventListener('change', () => { updateConfig(); reconvert(); });
-travelRateInput.addEventListener('change', () => { updateConfig(); reconvert(); });
-penUpInput.addEventListener('change', () => { presetSelect.value = 'custom'; updateConfig(); reconvert(); });
-penDownInput.addEventListener('change', () => { presetSelect.value = 'custom'; updateConfig(); reconvert(); });
+presetSelect.addEventListener('change', () => {
+  updateConfig();
+  reconvert();
+});
+feedRateInput.addEventListener('change', () => {
+  updateConfig();
+  reconvert();
+});
+travelRateInput.addEventListener('change', () => {
+  updateConfig();
+  reconvert();
+});
+penUpInput.addEventListener('change', () => {
+  presetSelect.value = 'custom';
+  updateConfig();
+  reconvert();
+});
+penDownInput.addEventListener('change', () => {
+  presetSelect.value = 'custom';
+  updateConfig();
+  reconvert();
+});
 intensityInput.addEventListener('input', () => {
   intensityVal.textContent = intensityInput.value + '%';
   updateConfig();
   reconvert();
 });
-seedInput.addEventListener('change', () => { updateConfig(); reconvert(); });
-fontStyleSelect.addEventListener('change', () => { updateConfig(); reconvert(); });
+seedInput.addEventListener('change', () => {
+  updateConfig();
+  reconvert();
+});
+fontStyleSelect.addEventListener('change', () => {
+  updateConfig();
+  reconvert();
+});
 
 function updateConfig() {
   const preset = presetSelect.value as keyof typeof PRESETS;
@@ -173,7 +204,7 @@ function updateConfig() {
     feedRate: parseInt(feedRateInput.value) || 3000,
     travelRate: parseInt(travelRateInput.value) || 5000,
     startCode: startCodeInput.value,
-    endCode: endCodeInput.value
+    endCode: endCodeInput.value,
   };
   // Update pen command fields when preset changes
   if (preset !== 'custom') {
@@ -182,7 +213,7 @@ function updateConfig() {
   }
   currentConfig.effects = {
     intensity: parseInt(intensityInput.value) / 100,
-    seed: parseInt(seedInput.value) || 42
+    seed: parseInt(seedInput.value) || 42,
   };
   currentConfig.fontStyle = fontStyleSelect.value as 'print' | 'italic';
   saveSettings();
@@ -221,7 +252,10 @@ async function reconvert() {
 }
 
 function renderPreview(pages: Page[]) {
-  if (pages.length === 0) { previewContainer.innerHTML = ''; return; }
+  if (pages.length === 0) {
+    previewContainer.innerHTML = '';
+    return;
+  }
 
   const page = pages[0]; // Show first page
   const scale = 2; // preview scale
@@ -233,7 +267,8 @@ function renderPreview(pages: Page[]) {
     if (!g.pathData) continue;
     // Transform path data to SVG coordinates
     const transformed = transformPathForSvg(g);
-    if (transformed) paths += `<path d="${transformed}" fill="none" stroke="#333" stroke-width="0.3"/>`;
+    if (transformed)
+      paths += `<path d="${transformed}" fill="none" stroke="#333" stroke-width="0.3"/>`;
   }
 
   previewContainer.innerHTML = `
@@ -245,21 +280,40 @@ function renderPreview(pages: Page[]) {
 }
 
 function transformPathForSvg(g: { x: number; y: number; scale: number; pathData: string }): string {
-  // Parse the Hershey path format: "M x,y L x,y ..." and transform
+  // Transform path from font coordinates to page coordinates for SVG preview
   const s = g.scale;
   const ox = g.x;
   const oy = g.y;
 
-  return g.pathData.replace(/-?\d+\.?\d*/g, (() => {
-    let idx = 0;
-    return (match: string) => {
-      const val = parseFloat(match);
-      const isX = idx % 2 === 0;
-      idx++;
-      if (isX) return String(Math.round((ox + val * s) * 100) / 100);
-      else return String(Math.round((oy + val * s) * 100) / 100);
-    };
-  })());
+  // Parse commands properly: absolute commands get offset+scale, relative get only scale
+  const result: string[] = [];
+  const re = /([MmLlCcQqZz])\s*([-\d.,\s]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(g.pathData)) !== null) {
+    const cmd = m[1];
+    if (cmd === 'Z' || cmd === 'z') {
+      result.push(cmd);
+      continue;
+    }
+    const nums = m[2].trim()
+      ? m[2]
+          .trim()
+          .split(/[\s,]+/)
+          .map(Number)
+      : [];
+    const isRelative = cmd === cmd.toLowerCase();
+    const transformed = nums.map((val, i) => {
+      const isX = i % 2 === 0;
+      if (isRelative) {
+        return Math.round(val * s * 100) / 100;
+      } else {
+        if (isX) return Math.round((ox + val * s) * 100) / 100;
+        else return Math.round((oy + val * s) * 100) / 100;
+      }
+    });
+    result.push(cmd + transformed.join(','));
+  }
+  return result.join(' ');
 }
 
 // Download

@@ -1,8 +1,8 @@
 import JSZip from 'jszip';
 
 export interface PageSettings {
-  width: number;   // mm
-  height: number;  // mm
+  width: number; // mm
+  height: number; // mm
   margins: { top: number; bottom: number; left: number; right: number };
   linePitch: number; // mm — document grid line pitch (default 0 = use font metrics)
 }
@@ -38,12 +38,12 @@ const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
 
 // Convert twips (1/20 pt = 1/1440 inch) to mm
 function twipsToMm(twips: number): number {
-  return twips * 25.4 / 1440;
+  return (twips * 25.4) / 1440;
 }
 
 // Convert EMU (English Metric Units, 1/914400 inch) to mm — used for page size
 function emuToMm(emu: number): number {
-  return emu * 25.4 / 914400;
+  return (emu * 25.4) / 914400;
 }
 
 function getAttr(el: Element, localName: string): string | null {
@@ -51,15 +51,19 @@ function getAttr(el: Element, localName: string): string | null {
 }
 
 function child(el: Element, localName: string): Element | null {
-  return el.getElementsByTagNameNS(W, localName)[0] ||
-    el.querySelector(`${localName}, w\\:${localName}`) || null;
+  return (
+    el.getElementsByTagNameNS(W, localName)[0] ||
+    el.querySelector(`${localName}, w\\:${localName}`) ||
+    null
+  );
 }
 
 function parsePageSettings(sectPr: Element | null): PageSettings {
   const defaults: PageSettings = {
-    width: 210, height: 297, // A4
+    width: 210,
+    height: 297, // A4
     margins: { top: 25.4, bottom: 25.4, left: 31.7, right: 31.7 },
-    linePitch: 0
+    linePitch: 0,
   };
   if (!sectPr) return defaults;
 
@@ -101,7 +105,7 @@ function parseParagraphFormat(pPr: Element | null): ParagraphFormat {
     indent: { left: 0, right: 0, firstLine: 0 },
     tabs: [],
     alignment: 'left',
-    spacing: { before: 0, after: 0, line: 1 }
+    spacing: { before: 0, after: 0, line: 1 },
   };
   if (!pPr) return fmt;
 
@@ -184,6 +188,48 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(docXml, 'application/xml');
 
+  // Parse styles.xml for Normal style defaults
+  const styleSpacing = { before: 0, after: 0, line: 0 }; // 0 = not set in style
+  let styleCharSpacing = 0;
+  let styleFontSize = 0;
+  const stylesXml = await zip.file('word/styles.xml')?.async('string');
+  if (stylesXml) {
+    const styleDoc = parser.parseFromString(stylesXml, 'application/xml');
+    // Find default paragraph style (w:default="1" w:type="paragraph")
+    const styles = styleDoc.getElementsByTagNameNS(W, 'style');
+    for (let i = 0; i < styles.length; i++) {
+      const s = styles[i];
+      if (getAttr(s, 'type') === 'paragraph' && getAttr(s, 'default') === '1') {
+        const sPPr = child(s, 'pPr');
+        if (sPPr) {
+          const sp = child(sPPr, 'spacing');
+          if (sp) {
+            const before = getAttr(sp, 'before');
+            const after = getAttr(sp, 'after');
+            const line = getAttr(sp, 'line');
+            const lineRule = getAttr(sp, 'lineRule');
+            if (before) styleSpacing.before = twipsToMm(parseInt(before));
+            if (after) styleSpacing.after = twipsToMm(parseInt(after));
+            if (line) {
+              const lineVal = parseInt(line);
+              if (lineRule === 'exact' || lineRule === 'atLeast') {
+                styleSpacing.line = twipsToMm(lineVal);
+              } else {
+                styleSpacing.line = lineVal / 240;
+              }
+            }
+          }
+        }
+        const sRPr = child(s, 'rPr');
+        if (sRPr) {
+          styleFontSize = getRunFontSize(sRPr, 0);
+          styleCharSpacing = getRunCharSpacing(sRPr);
+        }
+        break;
+      }
+    }
+  }
+
   // Page settings from last sectPr
   const sectPrs = doc.getElementsByTagNameNS(W, 'sectPr');
   const sectPr = sectPrs.length > 0 ? sectPrs[sectPrs.length - 1] : null;
@@ -199,6 +245,8 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
       defaultFontSize = getRunFontSize(rPr, 12);
     }
   }
+  // Style font size overrides docDefaults if set
+  if (styleFontSize > 0) defaultFontSize = styleFontSize;
 
   // Parse paragraphs
   const paragraphs: Paragraph[] = [];
@@ -210,6 +258,17 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
     const pEl = pEls[i];
     const pPr = child(pEl, 'pPr');
     const format = parseParagraphFormat(pPr);
+
+    // Apply style defaults for spacing if paragraph doesn't specify them
+    if (styleSpacing.line > 0 && format.spacing.line === 1) {
+      format.spacing.line = styleSpacing.line;
+    }
+    if (styleSpacing.before > 0 && format.spacing.before === 0) {
+      format.spacing.before = styleSpacing.before;
+    }
+    if (styleSpacing.after > 0 && format.spacing.after === 0) {
+      format.spacing.after = styleSpacing.after;
+    }
 
     // Get paragraph-level font size
     let pFontSize = defaultFontSize;
@@ -227,7 +286,7 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
       if (node.localName === 'r') {
         const rPr = child(node, 'rPr');
         const fontSize = getRunFontSize(rPr, pFontSize);
-        const charSpacing = getRunCharSpacing(rPr);
+        const charSpacing = getRunCharSpacing(rPr) || styleCharSpacing;
         // Collect text and tabs within this run
         const rChildren = node.childNodes;
         for (let k = 0; k < rChildren.length; k++) {

@@ -8,33 +8,40 @@ export interface Glyph {
 const glyphs = (fontData as any).glyphs as Record<string, { path: string; width: number }>;
 
 let _italic = false;
-export function setItalic(v: boolean) { _italic = v; }
+export function setItalic(v: boolean) {
+  _italic = v;
+}
 
 function skewPath(d: string, angleDeg: number): string {
   const tan = Math.tan((angleDeg * Math.PI) / 180);
   const baseline = FONT_CAP_HEIGHT;
   const re = /-?\d+\.?\d*/g;
   let idx = 0;
-  return d.replace(re, (match) => {
-    const val = parseFloat(match);
-    const isY = idx % 2 === 1;
-    idx++;
-    if (!isY) return match;
-    // Skew X based on Y position (done on X, but we iterate X,Y pairs)
-    return match;
-  }).replace(re, (() => {
-    let i = 0;
-    return (match: string) => {
+  return d
+    .replace(re, (match) => {
       const val = parseFloat(match);
-      const isX = i % 2 === 0;
-      i++;
-      if (isX) {
-        // Need next Y — approximate with baseline shift
-        return match;
-      }
+      const isY = idx % 2 === 1;
+      idx++;
+      if (!isY) return match;
+      // Skew X based on Y position (done on X, but we iterate X,Y pairs)
       return match;
-    };
-  })());
+    })
+    .replace(
+      re,
+      (() => {
+        let i = 0;
+        return (match: string) => {
+          const val = parseFloat(match);
+          const isX = i % 2 === 0;
+          i++;
+          if (isX) {
+            // Need next Y — approximate with baseline shift
+            return match;
+          }
+          return match;
+        };
+      })()
+    );
 }
 
 // Proper italic skew: shift X based on Y
@@ -67,7 +74,7 @@ export function getGlyph(char: string): Glyph | null {
   const g = glyphs[char];
   if (!g) return null;
 
-  if (_italic && g.path) {
+  if (_italic && g.path && char !== 'ы' && char !== '№') {
     return { path: applyItalic(g.path), width: g.width };
   }
   return { path: g.path, width: g.width };

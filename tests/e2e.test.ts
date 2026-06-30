@@ -19,7 +19,11 @@ const testConfig = {
   effects: { intensity: 0, seed: 42 },
 };
 
-async function runTest(name: string, createDocx: () => Promise<ArrayBuffer>, configOverrides?: Partial<typeof testConfig>) {
+async function runTest(
+  name: string,
+  createDocx: () => Promise<ArrayBuffer>,
+  configOverrides?: Partial<typeof testConfig>
+) {
   const docxData = await createDocx();
   const cfg = { ...JSON.parse(JSON.stringify(testConfig)), ...configOverrides };
   const result = await convert(docxData, cfg);
@@ -68,16 +72,21 @@ describe('E2E Visual Regression', () => {
   it('page A3 portrait', () => runTest('page-a3-portrait', fixtures.pageA3Portrait));
   it('page A3 landscape', () => runTest('page-a3-landscape', fixtures.pageA3Landscape));
   it('ukrainian letters', () => runTest('ukrainian-letters', fixtures.ukrainianLetters));
-  it('italic text', () => runTest('italic-text', fixtures.italicText, { fontStyle: 'italic' as const }));
+  it('italic text', () =>
+    runTest('italic-text', fixtures.italicText, { fontStyle: 'italic' as const }));
   it('simplified alphabet', () => runTest('simplified-alphabet', fixtures.simplifiedAlphabet));
   it('pangram print', () => runTest('pangram-print', fixtures.pangramPrint));
-  it('pangram italic', () => runTest('pangram-italic', fixtures.pangramItalic, { fontStyle: 'italic' as const }));
+  it('pangram italic', () =>
+    runTest('pangram-italic', fixtures.pangramItalic, { fontStyle: 'italic' as const }));
   it('top and bottom', () => runTest('top-and-bottom', fixtures.topAndBottom));
   it('mixed font size', () => runTest('mixed-font-size', fixtures.mixedFontSize));
   it('zapovit', () => runTest('zapovit', fixtures.zapovit));
   it('full page', () => runTest('full-page', fixtures.fullPage));
-  it('full page large margins', () => runTest('full-page-large-margins', fixtures.fullPageLargeMargins));
-  it('full page small margins', () => runTest('full-page-small-margins', fixtures.fullPageSmallMargins));
-  it('full page zero margins', () => runTest('full-page-zero-margins', fixtures.fullPageZeroMargins));
+  it('full page large margins', () =>
+    runTest('full-page-large-margins', fixtures.fullPageLargeMargins));
+  it('full page small margins', () =>
+    runTest('full-page-small-margins', fixtures.fullPageSmallMargins));
+  it('full page zero margins', () =>
+    runTest('full-page-zero-margins', fixtures.fullPageZeroMargins));
   it('guillemets', () => runTest('guillemets', fixtures.guillemets));
 });

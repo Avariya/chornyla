@@ -14,13 +14,18 @@ const testConfig = {
  * Creates a docx with N paragraphs, each containing a single character,
  * with the given line spacing value (in 240ths: 240=single, 360=1.5, 480=double).
  */
-async function makeFullPageSingleCharLines(lineSpacingVal: number, lineRule: typeof LineRuleType[keyof typeof LineRuleType] = LineRuleType.AUTO): Promise<ArrayBuffer> {
+async function makeFullPageSingleCharLines(
+  lineSpacingVal: number,
+  lineRule: (typeof LineRuleType)[keyof typeof LineRuleType] = LineRuleType.AUTO
+): Promise<ArrayBuffer> {
   // Create enough single-char paragraphs to fill more than one page
-  const paragraphs = Array.from({ length: 80 }, () =>
-    new Paragraph({
-      spacing: { line: lineSpacingVal, lineRule },
-      children: [new TextRun('а')],
-    })
+  const paragraphs = Array.from(
+    { length: 80 },
+    () =>
+      new Paragraph({
+        spacing: { line: lineSpacingVal, lineRule },
+        children: [new TextRun('а')],
+      })
   );
   const doc = new Document({
     styles: { default: { document: { run: { font: { name: 'Slimamif Light' }, size: 24 } } } },
@@ -32,7 +37,7 @@ async function makeFullPageSingleCharLines(lineSpacingVal: number, lineRule: typ
 
 /** Count unique Y positions of glyphs on a page */
 function uniqueYPositions(glyphs: { y: number }[]): number {
-  const ys = new Set(glyphs.map(g => Math.round(g.y * 100)));
+  const ys = new Set(glyphs.map((g) => Math.round(g.y * 100)));
   return ys.size;
 }
 
@@ -69,7 +74,7 @@ describe('Line spacing: line count consistency', () => {
 
       // Parse gcode for page 1 only (before "; Page 2" or "M0 ; page change")
       const gcodeLines = result.gcode.split('\n');
-      const page1End = gcodeLines.findIndex(l => l.includes('; Page 2'));
+      const page1End = gcodeLines.findIndex((l) => l.includes('; Page 2'));
       const page1Gcode = (page1End > 0 ? gcodeLines.slice(0, page1End) : gcodeLines).join('\n');
 
       // Count distinct Y positions in gcode for page 1

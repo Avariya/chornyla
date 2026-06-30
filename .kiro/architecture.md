@@ -60,7 +60,10 @@ scripts/
 
 ```typescript
 // Font
-interface Glyph { path: string; width: number; }
+interface Glyph {
+  path: string;
+  width: number;
+}
 
 // Document Model
 interface Document {
@@ -75,20 +78,29 @@ interface Paragraph {
   alignment: 'left' | 'center' | 'right' | 'justify';
   spacing: { before: number; after: number; line: number };
 }
-interface Run { text: string; fontSize: number; charSpacing: number; }
+interface Run {
+  text: string;
+  fontSize: number;
+  charSpacing: number;
+}
 
 // Layout output
 interface PositionedGlyph {
-  char: string; x: number; y: number;
-  scale: number; pathData: string;
+  char: string;
+  x: number;
+  y: number;
+  scale: number;
+  pathData: string;
 }
-interface Page { glyphs: PositionedGlyph[]; }
+interface Page {
+  glyphs: PositionedGlyph[];
+}
 
 // G-code config
 interface GcodeConfig {
-  penUp: string;      // e.g. "G00 Z0.300"
-  penDown: string;    // e.g. "G01 Z-0.200 F5000"
-  feedRate: number;   // mm/min
+  penUp: string; // e.g. "G00 Z0.300"
+  penDown: string; // e.g. "G01 Z-0.200 F5000"
+  feedRate: number; // mm/min
   travelRate: number;
   pageHeight: number; // for Y-axis inversion (mm)
 }

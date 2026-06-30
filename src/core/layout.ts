@@ -3,9 +3,9 @@ import { getGlyph, FONT_UNITS_PER_EM, FONT_CAP_HEIGHT, FONT_BASELINE } from './f
 
 export interface PositionedGlyph {
   char: string;
-  x: number;      // mm
-  y: number;      // mm (top of glyph)
-  scale: number;  // font units → mm multiplier
+  x: number; // mm
+  y: number; // mm (top of glyph)
+  scale: number; // font units → mm multiplier
   pathData: string;
 }
 
@@ -94,13 +94,13 @@ export function layoutDocument(doc: Document): Page[] {
 
       // Position glyphs on this line — align by baseline
       // Baseline position = y + FONT_BASELINE * maxScale on this line
-      const maxScale = Math.max(...line.glyphs.map(g => g.scale));
+      const maxScale = Math.max(...line.glyphs.map((g) => g.scale));
       const baselineY = y + FONT_BASELINE * maxScale;
       for (const g of line.glyphs) {
         currentGlyphs.push({
           ...g,
           x: g.x + offsetX,
-          y: baselineY - FONT_BASELINE * g.scale
+          y: baselineY - FONT_BASELINE * g.scale,
         });
       }
 
@@ -115,7 +115,7 @@ export function layoutDocument(doc: Document): Page[] {
           if (idx === -1) continue;
           if (g.char === ' ') spacesSeen++;
           // Shift all glyphs after each space
-          const found = currentGlyphs.findIndex(cg => cg === g);
+          const found = currentGlyphs.findIndex((cg) => cg === g);
           if (found >= 0) currentGlyphs[found].x += spacesSeen * extraSpace;
         }
       }
@@ -188,7 +188,7 @@ function layoutParagraph(
       if (char === '\t') {
         const tabX = nextTabStop(
           contentLeft + fmt.indent.left + x,
-          fmt.tabs.map(t => t.pos),
+          fmt.tabs.map((t) => t.pos),
           contentLeft
         );
         x = tabX - contentLeft - fmt.indent.left;
@@ -207,20 +207,24 @@ function layoutParagraph(
         if (char !== ' ' && wordStart > 0) {
           // Move current word to next line
           const overflow = lineGlyphs.splice(wordStart);
-          lineWidth = wordStart > 0 ? lineGlyphs[wordStart - 1]?.x 
-            ? (lineGlyphs[lineGlyphs.length - 1]?.x || 0) + 
-              (getGlyph(lineGlyphs[lineGlyphs.length - 1]?.char || '')?.width || 0) * scale - 
-              (contentLeft + fmt.indent.left)
-            : 0 : 0;
+          lineWidth =
+            wordStart > 0
+              ? lineGlyphs[wordStart - 1]?.x
+                ? (lineGlyphs[lineGlyphs.length - 1]?.x || 0) +
+                  (getGlyph(lineGlyphs[lineGlyphs.length - 1]?.char || '')?.width || 0) * scale -
+                  (contentLeft + fmt.indent.left)
+                : 0
+              : 0;
           // Recalculate line width
           if (lineGlyphs.length > 0) {
             const last = lineGlyphs[lineGlyphs.length - 1];
             const lastGlyph = getGlyph(last.char);
-            lineWidth = last.x - contentLeft - fmt.indent.left + (lastGlyph?.width || 0) * last.scale;
+            lineWidth =
+              last.x - contentLeft - fmt.indent.left + (lastGlyph?.width || 0) * last.scale;
           } else {
             lineWidth = 0;
           }
-          spaceCount = lineGlyphs.filter(g => g.char === ' ').length;
+          spaceCount = lineGlyphs.filter((g) => g.char === ' ').length;
           pushLine();
           // Re-add overflow glyphs
           for (const og of overflow) {
@@ -232,7 +236,7 @@ function layoutParagraph(
               x: contentLeft + fmt.indent.left + x,
               y: 0,
               scale: og.scale,
-              pathData: ogGlyph.path
+              pathData: ogGlyph.path,
             });
             x += ogWidth;
           }
@@ -253,7 +257,7 @@ function layoutParagraph(
         x: contentLeft + fmt.indent.left + x,
         y: 0, // will be set when line is placed
         scale,
-        pathData: glyph.path
+        pathData: glyph.path,
       });
       x += charWidth;
       lineWidth = x;
