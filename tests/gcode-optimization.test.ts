@@ -31,11 +31,11 @@ describe('G-code optimization', () => {
       }
     }
 
-    // Without stroke reversal: ~2111mm travel
-    // With stroke reversal: ~1920mm travel (~11% reduction)
-    // Assert it stays below 1950mm (allowing some margin)
-    expect(totalTravel).toBeLessThan(1950);
-    // And above 1500mm (sanity check — not unrealistically low)
-    expect(totalTravel).toBeGreaterThan(1500);
+    // Without stroke reversal: ~2600mm travel (pangram with English text)
+    // With stroke reversal: ~2360mm travel (~11% reduction)
+    // Assert it stays below 2500mm (allowing some margin)
+    expect(totalTravel).toBeLessThan(2500);
+    // And above 1800mm (sanity check — not unrealistically low)
+    expect(totalTravel).toBeGreaterThan(1800);
   });
 });
