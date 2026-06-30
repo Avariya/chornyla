@@ -215,6 +215,12 @@ export async function pangramPrint(): Promise<ArrayBuffer> {
       children: [new TextRun({ text: 'Жінці Юрка Ґедзя ще й їжачків подарували.', size: 32 })],
     }),
     new Paragraph({ children: [new TextRun({ text: "Фахівець Чіпка шукає об'єкти.", size: 32 })] }),
+    new Paragraph({
+      children: [new TextRun({ text: 'The quick brown fox jumps over the lazy dog.', size: 32 })],
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: 'Pack my box with five dozen liquor jugs!', size: 32 })],
+    }),
     new Paragraph({ children: [new TextRun({ text: '', size: 16 })] }),
     new Paragraph({
       children: [new TextRun({ text: 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', size: 32 })],
@@ -241,6 +247,12 @@ export async function pangramItalic(): Promise<ArrayBuffer> {
       children: [new TextRun({ text: 'Жінці Юрка Ґедзя ще й їжачків подарували.', size: 32 })],
     }),
     new Paragraph({ children: [new TextRun({ text: "Фахівець Чіпка шукає об'єкти.", size: 32 })] }),
+    new Paragraph({
+      children: [new TextRun({ text: 'The quick brown fox jumps over the lazy dog.', size: 32 })],
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: 'Pack my box with five dozen liquor jugs!', size: 32 })],
+    }),
     new Paragraph({ children: [new TextRun({ text: '', size: 16 })] }),
     new Paragraph({
       children: [new TextRun({ text: 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ', size: 32 })],
