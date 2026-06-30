@@ -1,4 +1,4 @@
-import fontData from '../fonts/slimamif.json';
+import fontData from '../data/slimamif.json';
 
 export interface Glyph {
   path: string;

@@ -2,6 +2,6 @@ dist/
 node_modules/
 tests/output/
 tests/snapshots/
-src/fonts/*.json
+src/data/*.json
 scripts/font-extract/*.json
 package-lock.json

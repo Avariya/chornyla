@@ -84,7 +84,7 @@ Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
 ### Hershey Fonts
 
 - Used initially, replaced due to "too printed" look
-- Files: `src/fonts/hershey-raw.json`, `src/core/font-simplify.ts` (no longer imported)
+- Files: `src/data/slimamif.json` (no longer imported from hershey-raw.json)
 - Issues: not handwritten enough, complex mapping for Cyrillic
 
 ## Segment Count Goals
