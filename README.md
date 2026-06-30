@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/Avariya/chornyla/actions/workflows/ci.yml/badge.svg)](https://github.com/Avariya/chornyla/actions/workflows/ci.yml)
 [![Deploy](https://github.com/Avariya/chornyla/actions/workflows/deploy.yml/badge.svg)](https://github.com/Avariya/chornyla/actions/workflows/deploy.yml)
+[![codecov](https://codecov.io/gh/Avariya/chornyla/graph/badge.svg)](https://codecov.io/gh/Avariya/chornyla)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Convert `.docx` documents into **G-code for pen plotters** using single-stroke
