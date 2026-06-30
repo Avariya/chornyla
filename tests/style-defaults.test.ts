@@ -1,65 +1,92 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { Document, Packer, Paragraph, TextRun, LineRuleType } from 'docx';
 import { convert } from '../src/core/pipeline';
 import { parseDocx } from '../src/core/docx-parser';
 import { PRESETS } from '../src/core/gcode';
 
 const testConfig = { gcode: { ...PRESETS.zAxis }, effects: { intensity: 0, seed: 42 } };
 
-const downloadsDir = join(process.env.HOME || '', 'Downloads');
+// Multi-paragraph text long enough to wrap and span lines.
+const LINES = [
+  'Перший рядок тексту достатньо довгий щоб перенестися на наступний рядок сторінки.',
+  'Другий абзац так само має містити чимало слів для перевірки переносу і інтервалів.',
+  'Третій абзац завершує документ і теж розтягнутий на декілька рядків тексту тут.',
+];
 
-describe('Style defaults: both docs should produce same layout', () => {
-  it('same line count and char spacing regardless of style vs explicit formatting', async () => {
-    const changedBuf = readFileSync(join(downloadsDir, 'змінено стиль по замовченню.docx'));
-    const defaultBuf = readFileSync(join(downloadsDir, 'без зміни стилю по замовченню.docx'));
+// Char spacing -4 twips (condensed ~0.2pt), line spacing 192/240 = 0.8 (multiple).
+const CHAR_SPACING = -4;
+const LINE = 192;
 
-    const changedAB = new Uint8Array(changedBuf).buffer;
-    const defaultAB = new Uint8Array(defaultBuf).buffer;
+/**
+ * Variant A: formatting lives ONLY in the document's default (Normal) style.
+ * Paragraphs/runs carry no explicit spacing — the parser must read styles.xml.
+ */
+async function makeStyleBased(): Promise<ArrayBuffer> {
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: { font: { name: 'Slimamif Light' }, size: 24, characterSpacing: CHAR_SPACING },
+          paragraph: { spacing: { line: LINE, lineRule: LineRuleType.AUTO } },
+        },
+      },
+    },
+    sections: [{ children: LINES.map((t) => new Paragraph({ children: [new TextRun(t)] })) }],
+  });
+  return new Uint8Array(await Packer.toBuffer(doc)).buffer;
+}
 
-    const changedDoc = await parseDocx(changedAB);
-    const defaultDoc = await parseDocx(defaultAB);
+/**
+ * Variant B: same visual result, but formatting is explicit on every
+ * paragraph and run (no reliance on the default style).
+ */
+async function makeExplicit(): Promise<ArrayBuffer> {
+  const doc = new Document({
+    styles: { default: { document: { run: { font: { name: 'Slimamif Light' }, size: 24 } } } },
+    sections: [
+      {
+        children: LINES.map(
+          (t) =>
+            new Paragraph({
+              spacing: { line: LINE, lineRule: LineRuleType.AUTO },
+              children: [new TextRun({ text: t, characterSpacing: CHAR_SPACING })],
+            })
+        ),
+      },
+    ],
+  });
+  return new Uint8Array(await Packer.toBuffer(doc)).buffer;
+}
 
-    // Both should have same line spacing
-    console.log('Changed style - para 0 spacing:', changedDoc.paragraphs[0].format.spacing);
-    console.log('Default style - para 0 spacing:', defaultDoc.paragraphs[0].format.spacing);
+describe('Normal-style defaults are applied as fallback', () => {
+  it('style-based and explicit formatting produce the same parsed spacing', async () => {
+    const styleDoc = await parseDocx(await makeStyleBased());
+    const explicitDoc = await parseDocx(await makeExplicit());
 
-    // Both should have same charSpacing in runs
-    console.log(
-      'Changed style - run 0 charSpacing:',
-      changedDoc.paragraphs[0].runs[0]?.charSpacing
-    );
-    console.log(
-      'Default style - run 0 charSpacing:',
-      defaultDoc.paragraphs[0].runs[0]?.charSpacing
-    );
-
-    expect(changedDoc.paragraphs[0].format.spacing.line).toBeCloseTo(
-      defaultDoc.paragraphs[0].format.spacing.line,
+    // Line spacing resolved from the Normal style must match explicit value.
+    expect(styleDoc.paragraphs[0].format.spacing.line).toBeCloseTo(
+      explicitDoc.paragraphs[0].format.spacing.line,
       4
     );
-    expect(changedDoc.paragraphs[0].runs[0]?.charSpacing).toBeCloseTo(
-      defaultDoc.paragraphs[0].runs[0]?.charSpacing || 0,
+    // 192/240 = 0.8
+    expect(styleDoc.paragraphs[0].format.spacing.line).toBeCloseTo(0.8, 4);
+
+    // Char spacing resolved from the Normal style must match explicit value.
+    expect(styleDoc.paragraphs[0].runs[0]?.charSpacing).toBeCloseTo(
+      explicitDoc.paragraphs[0].runs[0]?.charSpacing ?? 0,
       4
     );
+    // -4 twips in mm
+    expect(styleDoc.paragraphs[0].runs[0]?.charSpacing).toBeLessThan(0);
+  });
 
-    // Full conversion should produce same number of pages and similar glyph positions
-    const changedResult = await convert(changedAB, JSON.parse(JSON.stringify(testConfig)));
-    const defaultResult = await convert(defaultAB, JSON.parse(JSON.stringify(testConfig)));
+  it('both variants render to the same number of pages and glyphs', async () => {
+    const styleRes = await convert(await makeStyleBased(), JSON.parse(JSON.stringify(testConfig)));
+    const explicitRes = await convert(await makeExplicit(), JSON.parse(JSON.stringify(testConfig)));
 
-    console.log(
-      'Changed: pages=' +
-        changedResult.pages.length +
-        ' glyphs=' +
-        changedResult.pages.reduce((s, p) => s + p.glyphs.length, 0)
-    );
-    console.log(
-      'Default: pages=' +
-        defaultResult.pages.length +
-        ' glyphs=' +
-        defaultResult.pages.reduce((s, p) => s + p.glyphs.length, 0)
-    );
+    const glyphs = (r: typeof styleRes) => r.pages.reduce((s, p) => s + p.glyphs.length, 0);
 
-    expect(changedResult.pages.length).toBe(defaultResult.pages.length);
+    expect(styleRes.pages.length).toBe(explicitRes.pages.length);
+    expect(glyphs(styleRes)).toBe(glyphs(explicitRes));
   });
 });

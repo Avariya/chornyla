@@ -180,6 +180,28 @@ function getRunCharSpacing(rPr: Element | null): number {
   return 0;
 }
 
+// Parse a <w:spacing> element (paragraph spacing) into mm / multiplier values.
+// Only keys present in the XML are returned, so callers can layer defaults.
+function parseSpacingEl(spacingEl: Element | null): {
+  before?: number;
+  after?: number;
+  line?: number;
+} {
+  const out: { before?: number; after?: number; line?: number } = {};
+  if (!spacingEl) return out;
+  const before = getAttr(spacingEl, 'before');
+  const after = getAttr(spacingEl, 'after');
+  const line = getAttr(spacingEl, 'line');
+  const lineRule = getAttr(spacingEl, 'lineRule');
+  if (before) out.before = twipsToMm(parseInt(before));
+  if (after) out.after = twipsToMm(parseInt(after));
+  if (line) {
+    const lineVal = parseInt(line);
+    out.line = lineRule === 'exact' || lineRule === 'atLeast' ? twipsToMm(lineVal) : lineVal / 240;
+  }
+  return out;
+}
+
 export async function parseDocx(data: ArrayBuffer): Promise<Document> {
   const zip = await JSZip.loadAsync(data);
   const docXml = await zip.file('word/document.xml')?.async('string');
@@ -188,42 +210,56 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
   const parser = new DOMParser();
   const doc = parser.parseFromString(docXml, 'application/xml');
 
-  // Parse styles.xml for Normal style defaults
-  const styleSpacing = { before: 0, after: 0, line: 0 }; // 0 = not set in style
+  // Resolve default formatting from styles.xml. Precedence (low → high):
+  //   docDefaults (document-wide base) → default "Normal" paragraph style →
+  //   direct paragraph/run formatting (applied later, per paragraph).
+  const styleSpacing = { before: 0, after: 0, line: 0 }; // 0 = not set
   let styleCharSpacing = 0;
-  let styleFontSize = 0;
+  let defaultFontSize = 12;
+
   const stylesXml = await zip.file('word/styles.xml')?.async('string');
   if (stylesXml) {
     const styleDoc = parser.parseFromString(stylesXml, 'application/xml');
-    // Find default paragraph style (w:default="1" w:type="paragraph")
+
+    // 1) docDefaults — document-wide base defaults
+    const docDefaults = styleDoc.getElementsByTagNameNS(W, 'docDefaults')[0];
+    if (docDefaults) {
+      const rPrDefault = child(docDefaults, 'rPrDefault');
+      if (rPrDefault) {
+        const rPr = child(rPrDefault, 'rPr');
+        defaultFontSize = getRunFontSize(rPr, defaultFontSize);
+        styleCharSpacing = getRunCharSpacing(rPr);
+      }
+      const pPrDefault = child(docDefaults, 'pPrDefault');
+      if (pPrDefault) {
+        const ddPPr = child(pPrDefault, 'pPr');
+        if (ddPPr) {
+          const sp = parseSpacingEl(child(ddPPr, 'spacing'));
+          if (sp.before !== undefined) styleSpacing.before = sp.before;
+          if (sp.after !== undefined) styleSpacing.after = sp.after;
+          if (sp.line !== undefined) styleSpacing.line = sp.line;
+        }
+      }
+    }
+
+    // 2) Default (Normal) paragraph style — overrides docDefaults
     const styles = styleDoc.getElementsByTagNameNS(W, 'style');
     for (let i = 0; i < styles.length; i++) {
       const s = styles[i];
       if (getAttr(s, 'type') === 'paragraph' && getAttr(s, 'default') === '1') {
         const sPPr = child(s, 'pPr');
         if (sPPr) {
-          const sp = child(sPPr, 'spacing');
-          if (sp) {
-            const before = getAttr(sp, 'before');
-            const after = getAttr(sp, 'after');
-            const line = getAttr(sp, 'line');
-            const lineRule = getAttr(sp, 'lineRule');
-            if (before) styleSpacing.before = twipsToMm(parseInt(before));
-            if (after) styleSpacing.after = twipsToMm(parseInt(after));
-            if (line) {
-              const lineVal = parseInt(line);
-              if (lineRule === 'exact' || lineRule === 'atLeast') {
-                styleSpacing.line = twipsToMm(lineVal);
-              } else {
-                styleSpacing.line = lineVal / 240;
-              }
-            }
-          }
+          const sp = parseSpacingEl(child(sPPr, 'spacing'));
+          if (sp.before !== undefined) styleSpacing.before = sp.before;
+          if (sp.after !== undefined) styleSpacing.after = sp.after;
+          if (sp.line !== undefined) styleSpacing.line = sp.line;
         }
         const sRPr = child(s, 'rPr');
         if (sRPr) {
-          styleFontSize = getRunFontSize(sRPr, 0);
-          styleCharSpacing = getRunCharSpacing(sRPr);
+          const fs = getRunFontSize(sRPr, 0);
+          if (fs > 0) defaultFontSize = fs;
+          const cs = getRunCharSpacing(sRPr);
+          if (cs !== 0) styleCharSpacing = cs;
         }
         break;
       }
@@ -234,19 +270,6 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
   const sectPrs = doc.getElementsByTagNameNS(W, 'sectPr');
   const sectPr = sectPrs.length > 0 ? sectPrs[sectPrs.length - 1] : null;
   const page = parsePageSettings(sectPr);
-
-  // Default font size from document defaults
-  let defaultFontSize = 12;
-  const docDefaults = doc.getElementsByTagNameNS(W, 'docDefaults')[0];
-  if (docDefaults) {
-    const rPrDefault = child(docDefaults, 'rPrDefault');
-    if (rPrDefault) {
-      const rPr = child(rPrDefault, 'rPr');
-      defaultFontSize = getRunFontSize(rPr, 12);
-    }
-  }
-  // Style font size overrides docDefaults if set
-  if (styleFontSize > 0) defaultFontSize = styleFontSize;
 
   // Parse paragraphs
   const paragraphs: Paragraph[] = [];
