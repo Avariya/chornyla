@@ -346,6 +346,34 @@ export async function fullPageZeroMargins(): Promise<ArrayBuffer> {
   });
 }
 
+export async function alignJustify(): Promise<ArrayBuffer> {
+  return make([
+    new Paragraph({
+      alignment: AlignmentType.JUSTIFIED,
+      children: [
+        new TextRun(
+          'Цей текст вирівняний по ширині і має бути достатньо довгим щоб зайняти кілька рядків для перевірки роботи justify вирівнювання у документі'
+        ),
+      ],
+    }),
+  ]);
+}
+
+export async function indentRight(): Promise<ArrayBuffer> {
+  return make([
+    new Paragraph({
+      indent: { right: convertMillimetersToTwip(30) },
+      children: [
+        new TextRun('Текст з правим відступом 3 см має переноситись раніше ніж звичайний текст'),
+      ],
+    }),
+  ]);
+}
+
+export async function multiPage(): Promise<ArrayBuffer> {
+  return make([new Paragraph({ children: [new TextRun('а'.repeat(10000))] })]);
+}
+
 export async function guillemets(): Promise<ArrayBuffer> {
   return make([new Paragraph({ children: [new TextRun('«Привіт» — „світ" і "ще"')] })]);
 }
