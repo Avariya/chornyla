@@ -1,67 +1,68 @@
-# Plotter Handwriting — Project Context
+# chornyla — Project Context
 
-## Що це
+## What is this
 
-Client-side веб-додаток (TypeScript + Vite) для конвертації .docx → G-code для pen plotter.
-Використовує одноштрихові (single-stroke) шрифти з підтримкою кирилиці.
+Open-source client-side web app (TypeScript + Vite) that converts .docx documents
+into G-code for pen plotters using single-stroke handwriting fonts.
+
+**Repo:** https://github.com/Avariya/chornyla
+**Live:** https://avariya.github.io/chornyla/
+**License:** MIT © Oleksii Romanchenko
 
 ## Workflow
 
 ```
-Word/LibreOffice → .docx → [Браузер: парсинг + layout + effects] → .gcode → Плоттер
+Word/LibreOffice → .docx → [Browser: parse + layout + effects] → .gcode → Plotter
 ```
 
-Важливо: документ у Word має використовувати шрифт **Slimamif Light** для точного збігу
-розмірів тексту між Word preview та plotter output.
+The document in Word should use **Slimamif Light** font for accurate size matching
+between Word preview and plotter output.
 
-## Архітектура (data flow)
+## Architecture (data flow)
 
 ```
-.docx файл
+.docx file
   ↓ JSZip + DOMParser
 Document Model (page size, margins, orientation, paragraphs with formatting)
-  ↓ + Font Data (SlimamifLight, centerline-extracted JSON)
+  ↓ + Font Data (SlimamifLight, centerline-extracted JSON, 172 glyphs)
 Positioned Glyphs (char, x, y, scale, pathData) — baseline-aligned
   ↓ Handwriting Effects (seeded random offsets)
 Transformed Glyphs
   ↓ SVG Path → G-code (line segments, pen up/down)
-.gcode файл (GRBL-compatible)
+.gcode file (GRBL-compatible)
 ```
 
-## Ключові рішення
+## Key decisions
 
-1. **Client-side only** — весь pipeline працює в браузері, не потрібен сервер
-2. **Vite + vanilla TS** — мінімальний стек, без фреймворків
-3. **SlimamifLight** — рукописний OTF шрифт, centerline-extracted для single-stroke
-4. **DOCX як інструмент верстки** — користувач налаштовує відступи/таби в Word
-5. **Конфігурований G-code** — пресети для різних типів плоттерів (Z-axis, servo)
-6. **GRBL-сумісний вихід** — G00 Z0.300 / G01 Z-0.200 F5000, M03/M05, M30
-7. **Точні розміри** — ширини та висоти гліфів точно відповідають Word rendering
-8. **Visual regression тести** — 22 тести, Vitest + sharp, non-blank assertion
+1. **Client-side only** — entire pipeline in browser, no server needed
+2. **Vite + vanilla TS** — minimal stack, no frameworks
+3. **SlimamifLight** — handwritten OTF font, centerline-extracted for single-stroke
+4. **DOCX as layout tool** — user sets margins/tabs/spacing in Word
+5. **Configurable G-code** — presets for different plotter types (Z-axis, servo)
+6. **GRBL-compatible output** — G00/G01 moves, M03/M05, M30
+7. **Exact sizing** — glyph widths/heights match Word rendering precisely
+8. **Visual regression tests** — 43 tests via Vitest + sharp (gcode → PNG snapshots)
+9. **Single-file build** — dist/index.html is one self-contained file (~168KB)
 
-## Точність розмірів (перевірено)
-
-- Advance widths: збіг з OTF hmtx (0.07% відхилення від округлення)
-- Line height: 5.93mm vs Word 5.94mm (single spacing, 12pt)
-- Chars per line: 207 на A3 landscape (збіг з Word)
-- Baseline alignment: працює для mixed font sizes
-
-## Тестування
+## Testing
 
 ```bash
-npm test                    # запуск тестів
-UPDATE_SNAPSHOTS=1 npm test # оновити еталони після навмисних змін
+npm test                    # run tests (43 total)
+UPDATE_SNAPSHOTS=1 npm test # update snapshots after intentional changes
 ```
 
-Тести перевіряють:
+Tests cover:
 
-- Базовий текст, відступи, табуляція, вирівнювання
-- Різні розміри шрифту (включно з mixed на одному рядку)
-- Кирилиця, латиниця, спецсимволи
+- Basic text, indents, tabs, alignment
+- Mixed font sizes (baseline alignment)
+- Cyrillic, Latin, special chars (guillemets, №, dash variants, ellipsis)
 - Landscape/portrait A4/A3
-- Вірш "Заповіт" (багато рядків)
-- Non-blank assertion (зображення не може бути порожнім)
+- Line spacing (single/1.5/double/custom)
+- Character spacing (condensed/expanded)
+- Style defaults resolution (docDefaults vs Normal style vs explicit)
+- Multi-page documents
 
-## Цільова аудиторія
+## Target audience
 
-Людина без технічного досвіду, яка має плоттер і хоче друкувати текст кирилицею "від руки".
+Non-technical user who has a pen plotter and wants to print Cyrillic text
+that looks hand-written.
