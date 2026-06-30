@@ -189,7 +189,6 @@ function glyphToPoints(glyph: PositionedGlyph, pageHeight: number): number[][][]
         }
         break;
       }
-      /* c8 ignore next 13 -- absolute cubic not used by current font */
       case 'C': {
         for (let i = 0; i < args.length; i += 6) {
           const pts: number[][] = [];
@@ -218,7 +217,6 @@ function glyphToPoints(glyph: PositionedGlyph, pageHeight: number): number[][][]
         }
         break;
       }
-      /* c8 ignore next 13 -- quadratic Bézier not used by current font */
       case 'Q': {
         for (let i = 0; i < args.length; i += 4) {
           const pts: number[][] = [];
@@ -232,7 +230,6 @@ function glyphToPoints(glyph: PositionedGlyph, pageHeight: number): number[][][]
         }
         break;
       }
-      /* c8 ignore next 13 -- relative quadratic not used by current font */
       case 'q': {
         for (let i = 0; i < args.length; i += 4) {
           const pts: number[][] = [];
