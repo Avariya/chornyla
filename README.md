@@ -42,7 +42,7 @@ and download a `.gcode` file ready for your machine.
 
 **Use the hosted version:** just open the [live demo](https://avariya.github.io/chornyla/).
 
-**Run locally** (requires [Node.js](https://nodejs.org/) 20+):
+**Run locally** (requires [Node.js](https://nodejs.org/) 26+):
 
 ```bash
 git clone https://github.com/Avariya/chornyla.git
@@ -139,7 +139,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `npm run typecheck && npm run 
 
 **Готова версія:** просто відкрийте [демо](https://avariya.github.io/chornyla/).
 
-**Локально** (потрібен [Node.js](https://nodejs.org/) 20+):
+**Локально** (потрібен [Node.js](https://nodejs.org/) 26+):
 
 ```bash
 git clone https://github.com/Avariya/chornyla.git
