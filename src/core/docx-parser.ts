@@ -144,8 +144,13 @@ function parseParagraphFormat(pPr: Element | null): ParagraphFormat {
     const after = getAttr(spacing, 'after');
     const line = getAttr(spacing, 'line');
     const lineRule = getAttr(spacing, 'lineRule');
-    if (before) fmt.spacing.before = twipsToMm(parseInt(before));
-    if (after) fmt.spacing.after = twipsToMm(parseInt(after));
+    // Use -1 sentinel for "explicitly set to 0" vs "not present" (which stays at default 0/1).
+    // When the attribute is present (even as "0"), we parse it and mark it as explicit.
+    if (before !== null) fmt.spacing.before = twipsToMm(parseInt(before));
+    if (after !== null) fmt.spacing.after = twipsToMm(parseInt(after));
+    // Mark that before/after were explicitly specified (even if 0).
+    (fmt.spacing as any)._beforeSet = before !== null;
+    (fmt.spacing as any)._afterSet = after !== null;
     if (line) {
       const lineVal = parseInt(line);
       if (lineRule === 'exact' || lineRule === 'atLeast') {
@@ -154,6 +159,7 @@ function parseParagraphFormat(pPr: Element | null): ParagraphFormat {
         // Default: proportional (240 = single, 360 = 1.5, 480 = double)
         fmt.spacing.line = lineVal / 240;
       }
+      (fmt.spacing as any)._lineSet = true;
     }
   }
 
@@ -282,14 +288,17 @@ export async function parseDocx(data: ArrayBuffer): Promise<Document> {
     const pPr = child(pEl, 'pPr');
     const format = parseParagraphFormat(pPr);
 
-    // Apply style defaults for spacing if paragraph doesn't specify them
-    if (styleSpacing.line > 0 && format.spacing.line === 1) {
+    // Apply style defaults for spacing only if the paragraph didn't explicitly set the attribute.
+    // Per OOXML spec: "If this element is omitted on a given paragraph, its value is determined
+    // by the setting previously set at any level of the style hierarchy."
+    // An explicit after="0" means "no spacing" and must NOT be overridden by docDefaults.
+    if (styleSpacing.line > 0 && !(format.spacing as any)._lineSet) {
       format.spacing.line = styleSpacing.line;
     }
-    if (styleSpacing.before > 0 && format.spacing.before === 0) {
+    if (styleSpacing.before > 0 && !(format.spacing as any)._beforeSet) {
       format.spacing.before = styleSpacing.before;
     }
-    if (styleSpacing.after > 0 && format.spacing.after === 0) {
+    if (styleSpacing.after > 0 && !(format.spacing as any)._afterSet) {
       format.spacing.after = styleSpacing.after;
     }
 
