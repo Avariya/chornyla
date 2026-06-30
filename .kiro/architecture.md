@@ -5,18 +5,25 @@
 ```
 src/
 ├── core/
-│   ├── font.ts          — Font data loading & glyph lookup (SlimamifLight)
-│   ├── docx-parser.ts   — DOCX → Document Model (with orientation support)
+│   ├── font.ts          — Font data loading & glyph lookup (172 glyphs)
+│   ├── docx-parser.ts   — DOCX → Document Model (with style hierarchy resolution)
 │   ├── layout.ts        — Document Model → Positioned Glyphs (baseline-aligned)
-│   ├── effects.ts       — Apply handwriting randomness
-│   ├── gcode.ts         — SVG paths → G-code (GRBL format)
+│   ├── effects.ts       — Apply handwriting randomness (seeded PRNG)
+│   ├── gcode.ts         — SVG paths → G-code (GRBL format, Bézier flattening)
 │   └── pipeline.ts      — Orchestrator: connects all modules
 ├── ui/
-│   └── app.ts           — Web interface
+│   └── app.ts           — Web interface (drag-drop, preview, settings, download)
 ├── fonts/
-│   └── slimamif.json    — Centerline-extracted font data (156 glyphs)
-scripts/
-└── font-extract/        — Python scripts for font extraction (dev-only)
+│   └── slimamif.json    — Centerline-extracted font data (172 glyphs)
+tests/
+├── e2e.test.ts          — 27 visual regression tests (gcode → PNG snapshots)
+├── line-spacing.test.ts — 7 tests for line spacing variants
+├── char-spacing.test.ts — 5 tests for character spacing
+├── style-defaults.test.ts — 4 tests for docDefaults/Normal style resolution
+└── helpers/
+    ├── gcode-to-png.ts  — Renders gcode to PNG (green/red dots for pen up/down)
+    ├── create-docx.ts   — Test fixture: generates .docx in memory
+    └── compare-images.ts — Pixel diff with 0.1% threshold
 ```
 
 ## Data Flow
@@ -27,33 +34,41 @@ scripts/
 └──────┬──────┘
        │ JSZip unzip + DOMParser
        ▼
-┌─────────────────────────────────────┐
-│ Document Model                       │
-│ { pageSize, margins, paragraphs[] } │
-│   paragraph: { text, indent, tabs,  │
-│     alignment, spacing, fontSize }  │
-└──────┬──────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ styles.xml → resolve defaults            │
+│   docDefaults < Normal style < explicit  │
+└──────┬──────────────────────────────────┘
+       │
+       ▼
+┌─────────────────────────────────────────┐
+│ Document Model                           │
+│ { pageSize, margins, paragraphs[] }     │
+│   paragraph: { runs[], indent, tabs,    │
+│     alignment, spacing }                │
+│   run: { text, fontSize, charSpacing }  │
+└──────┬──────────────────────────────────┘
        │ + Font Data (path + width per char)
        ▼
-┌─────────────────────────────────────┐
-│ Positioned Glyphs                    │
-│ Page[] → { char, x, y, scale,      │
-│            pathData }[]             │
-└──────┬──────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ Positioned Glyphs                        │
+│ Page[] → { char, x, y, scale, path }[] │
+│ (baseline-aligned, word-wrapped)        │
+└──────┬──────────────────────────────────┘
        │ Handwriting Effects (seeded PRNG)
        ▼
-┌─────────────────────────────────────┐
-│ Transformed Glyphs                   │
-│ (with random offsets/rotation)      │
-└──────┬──────────────────────────────┘
-       │ SVG path parse + Bezier flatten
+┌─────────────────────────────────────────┐
+│ Transformed Glyphs                       │
+│ (with random offsets/rotation)          │
+└──────┬──────────────────────────────────┘
+       │ SVG path parse + Bézier flatten
        ▼
-┌─────────────────────────────────────┐
-│ G-code                               │
-│ G21 G90 G40 G17, M03, G04 P2        │
-│ G00/G01 moves, pen up/down           │
-│ M0 between pages, M05+M30 footer    │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ G-code                                   │
+│ Header: G21 G90 + G92 + pen config      │
+│ Body: G00/G01 moves, pen up/down        │
+│ Pages: M0 pause between pages           │
+│ Footer: pen up + home + M05 + M30       │
+└─────────────────────────────────────────┘
 ```
 
 ## Key Interfaces
@@ -61,8 +76,8 @@ scripts/
 ```typescript
 // Font
 interface Glyph {
-  path: string;
-  width: number;
+  path: string; // SVG path (M/L/C/Q commands)
+  width: number; // advance width in font units
 }
 
 // Document Model
@@ -71,17 +86,23 @@ interface Document {
   margins: { top: number; bottom: number; left: number; right: number };
   paragraphs: Paragraph[];
 }
+
 interface Paragraph {
   runs: Run[];
+  format: ParagraphFormat;
+}
+
+interface ParagraphFormat {
   indent: { left: number; right: number; firstLine: number };
-  tabs: number[];
+  tabs: { pos: number }[];
   alignment: 'left' | 'center' | 'right' | 'justify';
   spacing: { before: number; after: number; line: number };
 }
+
 interface Run {
   text: string;
-  fontSize: number;
-  charSpacing: number;
+  fontSize: number; // pt
+  charSpacing: number; // mm (negative = condensed, positive = expanded)
 }
 
 // Layout output
@@ -92,6 +113,7 @@ interface PositionedGlyph {
   scale: number;
   pathData: string;
 }
+
 interface Page {
   glyphs: PositionedGlyph[];
 }
@@ -100,11 +122,24 @@ interface Page {
 interface GcodeConfig {
   penUp: string; // e.g. "G00 Z0.300"
   penDown: string; // e.g. "G01 Z-0.200 F5000"
-  feedRate: number; // mm/min
-  travelRate: number;
-  pageHeight: number; // for Y-axis inversion (mm)
+  feedRate: number; // mm/min for drawing
+  travelRate: number; // mm/min for travel
+  startCode: string; // header (includes G92 for home position)
+  endCode: string; // footer
 }
 ```
+
+## Style Resolution (OOXML spec)
+
+Paragraph spacing is resolved through the style hierarchy:
+
+1. **docDefaults** (`styles.xml` → `<w:docDefaults>`) — document-wide base
+2. **Normal style** (`styles.xml` → `<w:style w:default="1" w:type="paragraph">`) — overrides docDefaults
+3. **Direct formatting** (`document.xml` → `<w:pPr>`) — overrides everything
+
+Important: an explicit `w:after="0"` means "no spacing" and must NOT be
+overridden by docDefaults. The parser tracks whether attributes were explicitly
+set vs absent.
 
 ## Coordinate System
 
@@ -112,4 +147,4 @@ interface GcodeConfig {
 - Units: millimeters
 - X: left → right
 - Y: top → bottom (SVG convention), inverted to bottom → top for G-code
-- Font units → mm conversion based on fontSize (pt)
+- Font units → mm: `fontSize_pt * 0.3528 / unitsPerEm`

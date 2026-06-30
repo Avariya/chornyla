@@ -12,8 +12,8 @@ where each letter is a single open path, like handwriting with a pen.
 
 - **File**: `SlimamifLight.otf` (must be installed on system for Word preview)
 - **Style**: Handwritten/calligraphic
-- **Coverage**: Full Ukrainian + Russian + Latin + digits + punctuation (155 chars)
-- **License**: [check with font author]
+- **Coverage**: Full Ukrainian + Russian + Latin + digits + punctuation (172 glyphs)
+- **License**: Free for personal and commercial use (Dmitri Zdorov, dimka.com)
 
 ### Extraction Process
 
@@ -75,7 +75,7 @@ Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
 }
 ```
 
-- `path`: SVG path with M (moveTo) and L (lineTo) commands
+- `path`: SVG path with M, L, C, Q commands (lines + Bézier curves)
 - `width`: advance width in font units (matches OTF hmtx table)
 - Coordinates: Y=0 is top, Y grows downward, baseline at ~1140
 
@@ -91,5 +91,5 @@ Word single-spacing = `(usWinAscent + usWinDescent) / unitsPerEm * fontSize_mm`
 
 - Ideal: 1-2 segments per glyph (one continuous stroke)
 - Acceptable: 3-4 (crossbars, dots)
-- Current: 284 total segments for 156 glyphs (avg 1.8)
+- Current: ~310 total segments for 172 glyphs (avg ~1.8)
 - Only `#` has > 4 segments (5)

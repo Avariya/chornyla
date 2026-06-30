@@ -2,69 +2,77 @@
 
 ## Functional Requirements
 
-### Вхід
+### Input
 
-- Формат: .docx (Microsoft Word / LibreOffice Writer)
-- Парсинг форматування:
-  - Розмір сторінки (width, height) з document settings + orientation (landscape/portrait)
+- Format: .docx (Microsoft Word / LibreOffice Writer)
+- Parsed formatting:
+  - Page size (width, height) + orientation (landscape/portrait)
   - Margins (top, bottom, left, right)
   - Paragraph indent: left, right, firstLine, hanging
-  - Tab stops (позиції табуляції)
+  - Tab stops (custom positions)
   - Alignment: left, center, right, justify
-  - Line spacing: single, 1.5, double, exact value
-  - Font size (для масштабування символів)
-  - Character spacing: condensed (ущільнений) / expanded (розріджений)
-  - Текст (Unicode, кирилиця + латиниця)
+  - Line spacing: single, 1.5, double, exact value, custom multiplier
+  - Font size (for glyph scaling)
+  - Character spacing: condensed / expanded (twips → mm)
+  - Style defaults resolution: docDefaults → Normal style → direct formatting
+  - Text (Unicode: Ukrainian + Russian Cyrillic, Latin, digits, punctuation)
 
-### Шрифт
+### Font
 
-- Тип: одноштриховий (single-stroke) — кожна літера одним проходом пера
-- Стиль: рукописний або рукописні друковані
-- Підтримка символів:
-  - Українська: А-Яа-я + Ґ, Є, І, Ї, ґ, є, і, ї
-  - Російська: А-Яа-я + Ё, ё
-  - Латиниця: A-Za-z
-  - Цифри: 0-9
-  - Пунктуація: . , ! ? : ; - — " ' ( ) / + = @ # № %
+- Type: single-stroke — each letter drawn in one pen pass
+- Style: handwritten
+- Coverage (172 glyphs):
+  - Ukrainian: А-Яа-я + Ґ, Є, І, Ї, ґ, є, і, ї
+  - Russian: А-Яа-я + Ё, ё
+  - Latin: A-Za-z
+  - Digits: 0-9
+  - Punctuation: . , ! ? : ; – — … " " « » ' ' ( ) / + = @ # № % ° ′ ″
+- Special handling:
+  - ы, № — kept upright in italic (curves distort)
+  - Guillemets «» rendered as distinct glyphs
 
-### Ефекти "живого" письма
+### "Living handwriting" effects
 
-- Випадкове зміщення по X/Y (±0.2-0.3mm)
-- Випадковий нахил символу (±2-3°)
-- Варіація розміру (±3-5%)
-- Конфігурована інтенсивність (0 = вимкнено, 1 = максимум)
-- Seeded PRNG для відтворюваності
+- Random X/Y offset (±0.2-0.3mm)
+- Random character tilt (±2-3°)
+- Size variation (±3-5%)
+- Configurable intensity (0 = off, 1 = maximum)
+- Seeded PRNG for reproducibility
 
-### Вихід
+### Output
 
-- Формат: .gcode (текстовий файл)
-- Підтримка кількох сторінок (M0 пауза між сторінками)
-- G-code формат (GRBL-сумісний):
-  - Заголовок: `G21 G90 G40 G17` + `M03 S10000` + `G04 P2`
-  - Футер: pen up + `G00 X0.000 Y0.000` + `M05` + `M30`
-  - Координати: 4 знаки після точки (X47.8708 Y58.4835)
-  - Команди руху: G00 (rapid), G01 (draw)
-- Конфігурація pen up/down:
+- Format: .gcode (text file)
+- Multi-page support (M0 pause between pages)
+- G-code format (GRBL-compatible):
+  - Header: `G21 G90 G40 G17` + pen config + `G92` home position
+  - Footer: pen up + return to home + `M05` + `M30`
+  - Coordinates: 4 decimal places (X47.8708 Y58.4835)
+  - Move commands: G00 (rapid/travel), G01 (draw)
+- Configurable pen up/down:
   - Z-axis: G00 Z0.300 / G01 Z-0.200 F5000 (default)
   - Servo: M3 S0 / M3 S50
-  - Custom: довільні команди
-- Feed rate для малювання: 5000 мм/хв (default)
-- Travel rate для переміщень: 5000 мм/хв (default)
+  - Custom: arbitrary commands
+- Feed rate: 5000 mm/min (default, configurable)
+- Home position parsed from G92 in start code
 
-### Інтерфейс
+### Interface
 
-- Веб-додаток, працює в браузері
-- Drag & drop або file input для .docx
-- SVG preview тексту на "сторінці"
-- Панель налаштувань (пресет, швидкість, ефекти)
-- Кнопка завантаження .gcode
-- Warnings для невідомих символів
-- Зрозумілий для непрограміста
+- Web app, runs in browser
+- Drag & drop or file input for .docx
+- SVG preview of text on "page"
+- Settings panel (preset, feed rate, effects intensity)
+- Download .gcode button
+- Warnings for unknown characters
+- Accessible to non-programmers
 
 ## Non-Functional Requirements
 
-- Працює повністю client-side (без серверу)
-- Може бути розгорнутий як статичний сайт
-- Працює на Windows (основна ОС користувача)
-- Швидкість: конвертація документа < 2 секунди
-- Розмір збірки: мінімальний (без важких фреймворків)
+- Fully client-side (no server required)
+- Deployable as a static site (GitHub Pages)
+- Single-file HTML build (~168KB)
+- Works offline after loading
+- Conversion time: < 2 seconds for typical document
+- Bundle size: minimal (no heavy frameworks)
+- Node.js ≥ 26 for development
+- CI: typecheck + lint + format + build + test on every push
+- Visual regression tests with 0.1% pixel diff threshold
