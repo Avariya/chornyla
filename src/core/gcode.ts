@@ -284,12 +284,18 @@ export function generateGcode(pages: Page[], config: GcodeConfig): string {
   lines.push('G04 P2');
   lines.push(penUp);
 
+  // Track pen position for stroke reversal optimization
+  let lastX = homeX,
+    lastY = homeY;
+
   for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
     if (pageIdx > 0) {
       lines.push(penUp);
       lines.push(`G00 X${homeX.toFixed(4)} Y${homeY.toFixed(4)}`);
       lines.push('M0 ; page change');
       lines.push('');
+      lastX = homeX;
+      lastY = homeY;
     }
 
     const page = pages[pageIdx];
@@ -301,6 +307,16 @@ export function generateGcode(pages: Page[], config: GcodeConfig): string {
 
       for (const stroke of strokes) {
         if (stroke.length < 2) continue;
+
+        // Stroke reversal: choose direction that minimizes travel
+        const startPt = stroke[0];
+        const endPt = stroke[stroke.length - 1];
+        const distToStart = (startPt[0] - lastX) ** 2 + (startPt[1] - lastY) ** 2;
+        const distToEnd = (endPt[0] - lastX) ** 2 + (endPt[1] - lastY) ** 2;
+        if (distToEnd < distToStart) {
+          stroke.reverse();
+        }
+
         // Pen up, move to start
         lines.push(penUp);
         lines.push(`G00 X${stroke[0][0].toFixed(4)} Y${stroke[0][1].toFixed(4)}`);
@@ -309,6 +325,10 @@ export function generateGcode(pages: Page[], config: GcodeConfig): string {
         for (let i = 1; i < stroke.length; i++) {
           lines.push(`G01 X${stroke[i][0].toFixed(4)} Y${stroke[i][1].toFixed(4)} F${feedRate}`);
         }
+
+        // Update last position
+        lastX = stroke[stroke.length - 1][0];
+        lastY = stroke[stroke.length - 1][1];
       }
     }
   }
