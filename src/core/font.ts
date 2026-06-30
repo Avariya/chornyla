@@ -12,39 +12,7 @@ export function setItalic(v: boolean) {
   _italic = v;
 }
 
-function skewPath(d: string, angleDeg: number): string {
-  const tan = Math.tan((angleDeg * Math.PI) / 180);
-  const baseline = FONT_CAP_HEIGHT;
-  const re = /-?\d+\.?\d*/g;
-  let idx = 0;
-  return d
-    .replace(re, (match) => {
-      const val = parseFloat(match);
-      const isY = idx % 2 === 1;
-      idx++;
-      if (!isY) return match;
-      // Skew X based on Y position (done on X, but we iterate X,Y pairs)
-      return match;
-    })
-    .replace(
-      re,
-      (() => {
-        let i = 0;
-        return (match: string) => {
-          const val = parseFloat(match);
-          const isX = i % 2 === 0;
-          i++;
-          if (isX) {
-            // Need next Y — approximate with baseline shift
-            return match;
-          }
-          return match;
-        };
-      })()
-    );
-}
-
-// Proper italic skew: shift X based on Y
+// Italic skew: shift X based on Y distance from baseline
 function applyItalic(d: string): string {
   const tan = Math.tan((12 * Math.PI) / 180);
   const nums: number[] = [];

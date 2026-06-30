@@ -89,4 +89,10 @@ describe('E2E Visual Regression', () => {
   it('full page zero margins', () =>
     runTest('full-page-zero-margins', fixtures.fullPageZeroMargins));
   it('guillemets', () => runTest('guillemets', fixtures.guillemets));
+  it('align justify', () => runTest('align-justify', fixtures.alignJustify));
+  it('indent right', () => runTest('indent-right', fixtures.indentRight));
+  it('effects intensity', () =>
+    runTest('effects-intensity', fixtures.pangramPrint, {
+      effects: { intensity: 0.5, seed: 42 },
+    }));
 });

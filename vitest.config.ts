@@ -8,7 +8,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       include: ['src/**/*.ts'],
-      exclude: ['src/ui/app.ts'],
+      exclude: ['src/ui/app.ts', 'src/main.ts'],
     },
   },
 });
