@@ -4,7 +4,7 @@ This project includes or derives from the following third-party works.
 
 ## Slimamif typeface (glyph shape derivation)
 
-The single-stroke glyph data in `src/fonts/slimamif.json` was produced by
+The single-stroke glyph data in `src/data/slimamif.json` was produced by
 centerline extraction from the **Slimamif** typeface (style: Slimamif Light)
 by **Dmitri Zdorov** (https://dimka.com/fonts).
 

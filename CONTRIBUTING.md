@@ -37,7 +37,7 @@ npm test
 
 ## Working with the font
 
-Glyphs live in `src/fonts/slimamif.json` as single-stroke SVG paths in font
+Glyphs live in `src/data/slimamif.json` as single-stroke SVG paths in font
 units (Y grows downward, baseline at ~1140). When you change glyphs, regenerate
 the visual snapshots with `npm run test:update` and review the diffs in
 `tests/output/` before committing.

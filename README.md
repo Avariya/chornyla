@@ -93,9 +93,8 @@ src/
     gcode.ts         glyph paths → G-code
     pipeline.ts      orchestrates the above
   ui/app.ts          browser UI
-  fonts/             single-stroke font data (JSON)
+  data/              single-stroke font data (JSON)
 tests/               visual-regression tests (gcode → PNG snapshots)
-fonts/               optional preview fonts for Word (OFL)
 ```
 
 ### Contributing
@@ -110,7 +109,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `npm run typecheck && npm run 
   **Slimamif** typeface by **Dmitri Zdorov** ([dimka.com](https://dimka.com/fonts)),
   free for personal and commercial use. The original font is **not** redistributed
   here — only derived coordinate data. See [NOTICE.md](NOTICE.md).
-- Preview fonts in `fonts/` are licensed under the SIL Open Font License.
 
 ---
 
@@ -190,4 +188,3 @@ npm run build
   **Slimamif** автора **Dmitri Zdorov** ([dimka.com](https://dimka.com/fonts)),
   безкоштовного для особистого і комерційного використання. Оригінальний шрифт
   тут **не** розповсюджується — лише похідні координатні дані. Див. [NOTICE.md](NOTICE.md).
-- Шрифти для прев'ю в `fonts/` — під ліцензією SIL Open Font License.
